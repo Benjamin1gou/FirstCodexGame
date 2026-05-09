@@ -1,43 +1,59 @@
-# FirstCodexGame
+# 勇者誘導ダンジョン（FirstCodexGame）
 
-Codex Web だけで開発できる、TypeScript + Phaser + Vite の最小プレイアブル 2D ブラウザゲームです。
+TypeScript + Phaser + Vite で作る、2D逆タワーディフェンス型パズルゲームMVPです。
 
-## Repository Review（作業ログ）
-- テンプレート由来: `phaserjs/template-vite-ts` 構成を確認。
-- scripts: `build-nolog` が存在するためビルドはこれを優先。
-- lockfile: `package-lock.json` があるため依存導入は `npm ci` 前提。
-- 依存スクリプト: package.json には `preinstall` / `install` / `postinstall` の定義なし。
-- vite: prod設定あり、GitHub Pages向けに `base` を `/FirstCodexGame/` に調整。
+## ゲーム概要
+プレイヤーは魔王ヴァルムの参謀として、勇者を直接攻撃せず、罠配置で自動行動する勇者を誘導・撃退します。
 
-## 開発コマンド
+## 技術構成
+- TypeScript
+- Phaser 4
+- Vite 6
+- GitHub Pages（静的配信）
+
+## 起動方法
 ```bash
 npm ci
 npm run dev-nolog
+```
+
+## ビルド方法
+```bash
 npm run build-nolog
 ```
 
-## ゲーム内容（最小プレイアブル）
-- TitleScene → GameScene → GameOverScene の遷移
-- 矢印キーでプレイヤー移動
-- 敵に当たるとゲームオーバー
-- アイテム取得でスコア加算
-- GameOver で `R` リスタート、`T` タイトルへ戻る
-
 ## ディレクトリ構成
-- `src/scenes`: シーン
-- `src/entities`: ゲームオブジェクト生成
-- `src/systems`: ゲームロジック
-- `src/config`: 設定値
-- `public/assets/generated`: 自作SVG素材
+- `src/scenes`: 画面進行と描画
+- `src/core`: ルール/AI/ステージ/物語
+- `src/data`: ステージ・勇者・ナラティブ定義
+- `src/systems`: ログなど横断処理
+- `src/config`: ゲーム設定
 
-## GitHub Pages 公開手順
-1. `main` ブランチへ push
-2. GitHub の **Settings > Pages** を開く
-3. Source を **GitHub Actions** に設定
-4. `.github/workflows/deploy.yml` の完了を待つ
-5. 公開URL: `https://<user>.github.io/FirstCodexGame/`
+## データ追加方法
+- ステージ: `src/data/stages/stage-xxx.ts` を追加し `stageRepository.ts` に登録
+- 勇者: `src/data/heroes/heroes.ts` に `HeroDefinition` を追加
+- 罠: `src/config/gameConfig.ts` の `TRAP`（将来は data 化推奨）
+- ストーリー: `src/data/narrative/story.ts` に `NarrativeDefinition` を追加
+
+## エンディング分岐
+`resolveEnding(allCleared, totalTrapCost)` で分岐。
+- 全クリア + 低コスト: 知略勝利
+- 全クリア + 高コスト: 力押し勝利
+- 途中失敗: 敗北
+
+## GitHub Pages公開手順
+1. `main` にpush
+2. Settings > Pages を GitHub Actions に設定
+3. `.github/workflows/deploy.yml` 完了を確認
 
 ## セキュリティ方針
-- APIキーや secrets はコミットしない
-- 不審な install script を持つ依存は追加しない
-- 素材は自作SVGを優先し、ライセンス不明素材を使わない
+- secrets はコミットしない
+- 外部通信・バックエンドは追加しない
+- ライセンス不明素材は使わない
+- install script 付き依存は慎重に評価
+
+## 今後の拡張案
+- 宝箱/モンスターの本実装
+- 勇者性格別の経路選好
+- 罠コストUI改善
+- Vitest で core 層テスト追加
