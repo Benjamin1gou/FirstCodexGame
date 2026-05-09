@@ -20,6 +20,10 @@ type GameSceneData = { stageIndex: number; totalTrapCost: number; clearedStages:
 const HERO_ASSET_BY_ID: Record<string, HeroAssetKey> = { adel: ASSET_KEYS.heroes.adel, mio: ASSET_KEYS.heroes.mio, serena: ASSET_KEYS.heroes.serena };
 
 export class GameScene extends Scene {
+  constructor() {
+    super(SCENES.game);
+  }
+
   private state!: GameSimulationState; private stageIndex = 0; private totalTrapCost = 0; private clearedStages = 0; private selectedTrap: TrapType = 'spike';
   private heroSprite!: Phaser.GameObjects.Image; private logsText!: Phaser.GameObjects.Text; private hpText!: Phaser.GameObjects.Text; private modeText!: Phaser.GameObjects.Text; private infoText!: Phaser.GameObjects.Text; private predictionText!: Phaser.GameObjects.Text;
   private trapButtons: Record<TrapType, Phaser.GameObjects.Text> = { spike: null as unknown as Phaser.GameObjects.Text, slime: null as unknown as Phaser.GameObjects.Text, decoy: null as unknown as Phaser.GameObjects.Text };
