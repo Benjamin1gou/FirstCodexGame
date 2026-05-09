@@ -22,8 +22,9 @@ export const decideHeroAction = (hero: HeroState, tiles: TileType[][], goal: Gri
     const nearestDanger = dangerTraps.length ? Math.min(...dangerTraps.map((t) => manhattan(position, t))) : MANHATTAN_MAX;
     const riskPenalty = Math.max(0, 4 - nearestDanger) * hero.traits.riskAversion * 3;
     const memoryPenalty = (seenSet.has(keyOf(position)) ? 4 : 0) * hero.traits.trapMemory;
-    const total = goalScore + treasureScore + curiosityScore - riskPenalty - memoryPenalty;
-    return { position, score: total, goalDistance: manhattan(position, goal), reasons: [`goal:${goalScore.toFixed(1)}`,`treasure:${treasureScore.toFixed(1)}`,`curiosity:${curiosityScore.toFixed(1)}`,`risk:-${riskPenalty.toFixed(1)}`,`memory:-${memoryPenalty.toFixed(1)}`] };
+    const backtrackPenalty = hero.memory.lastPosition && hero.memory.lastPosition.x === position.x && hero.memory.lastPosition.y === position.y ? 2.5 : 0;
+    const total = goalScore + treasureScore + curiosityScore - riskPenalty - memoryPenalty - backtrackPenalty;
+    return { position, score: total, goalDistance: manhattan(position, goal), reasons: [`goal:${goalScore.toFixed(1)}`,`treasure:${treasureScore.toFixed(1)}`,`curiosity:${curiosityScore.toFixed(1)}`,`risk:-${riskPenalty.toFixed(1)}`,`memory:-${memoryPenalty.toFixed(1)}`,`backtrack:-${backtrackPenalty.toFixed(1)}`] };
   });
 
   const best = [...scores].sort((a, b) => b.score - a.score || a.goalDistance - b.goalDistance)[0];
