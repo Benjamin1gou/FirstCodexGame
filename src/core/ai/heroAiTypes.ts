@@ -17,7 +17,7 @@ export type HeroState = {
   maxHp: number;
   position: GridPosition;
   traits: HeroTraits;
-  memory: { seenTraps: GridPosition[] };
+  memory: { seenTraps: GridPosition[]; lastPosition: GridPosition | null };
   currentTarget: GridPosition | null;
   status: HeroStatus;
   skipTurns: number;
