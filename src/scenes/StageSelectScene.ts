@@ -1,6 +1,8 @@
 import { Scene } from 'phaser';
 import { SCENES } from '../config/gameConfig';
 import { STAGES } from '../core/stage/stageRepository';
+import { AudioManager } from '../systems/AudioManager';
+import { createMuteButton } from '../systems/AudioUi';
 
 type StageSelectData = {
   index?: number;
@@ -15,6 +17,9 @@ export class StageSelectScene extends Scene {
   }
 
   create(data: StageSelectData = {}): void {
+    AudioManager.bindGlobalUnlock(this);
+    createMuteButton(this);
+    void AudioManager.playTitleBgm().catch(() => undefined);
     const index = data.index ?? 0;
     let cur = index;
 
@@ -37,6 +42,7 @@ export class StageSelectScene extends Scene {
     };
 
     const startStage = (): void => {
+      void AudioManager.unlock().catch(() => undefined);
       this.scene.start(SCENES.game, { stageIndex: cur, totalTrapCost: data.totalTrapCost ?? 0, clearedStages: data.clearedStages ?? 0, tutorialMode: data.tutorialMode ?? false });
     };
 

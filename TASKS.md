@@ -80,3 +80,9 @@
 
 ## Phase 12: AI Movement Stability
 - [x] 勇者が予測線上で往復ループし続けるケースを抑制（直前マスへの戻りにペナルティ）
+
+
+## Phase 13: Audio
+- [x] Web Audio APIによる8bit風BGM管理（AudioManager）を追加
+- [x] シーンごとのBGM切替と二重再生防止を追加
+- [x] ミュートUI（ボタン/Mキー）とlocalStorage保存を追加

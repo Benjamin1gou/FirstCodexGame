@@ -13,6 +13,8 @@ import type { GamePhase, GameSimulationState } from '../core/simulation/simulati
 import { getStageCount, loadStageByIndex } from '../core/stage/stageLoader';
 import type { GridPosition, PlacedTrap, StageDefinition, TrapType } from '../core/stage/stageTypes';
 import { HEROES } from '../data/heroes/heroes';
+import { AudioManager } from '../systems/AudioManager';
+import { createMuteButton } from '../systems/AudioUi';
 import { createLog } from '../systems/LogSystem';
 import { getTileAssetKey } from './gameSceneTypes';
 
@@ -50,6 +52,9 @@ export class GameScene extends Scene {
     boardBottomPadding: 12
   } as const;
   create(data: GameSceneData): void {
+    AudioManager.bindGlobalUnlock(this);
+    createMuteButton(this);
+    void AudioManager.playDungeonBgm().catch(() => undefined);
     this.stageIndex = data.stageIndex ?? 0; this.totalTrapCost = data.totalTrapCost ?? 0; this.clearedStages = data.clearedStages ?? 0;
     this.tutorialMode = data.tutorialMode ?? false;
     const stage = loadStageByIndex(this.stageIndex); const heroDef = HEROES.find((hero) => hero.id === stage.heroId); if (!heroDef) throw new Error(`Hero definition not found: ${stage.heroId}`);
@@ -89,7 +94,10 @@ export class GameScene extends Scene {
     this.trapButtons.spike = this.createTextButton(buttonColumnX, 30, 'トゲ罠', () => this.selectTrap('spike'));
     this.trapButtons.slime = this.createTextButton(buttonColumnX, 80, 'スライム罠', () => this.selectTrap('slime'));
     this.trapButtons.decoy = this.createTextButton(buttonColumnX, 130, 'デコイ罠', () => this.selectTrap('decoy'));
-    this.createTextButton(840, 30, '実行', () => this.startRunning());
+    this.createTextButton(840, 30, '実行', () => {
+      void AudioManager.unlock().catch(() => undefined);
+      this.startRunning();
+    });
     this.createTextButton(840, 80, '1手戻し', () => this.undoLastPlacement(stage));
     this.createTextButton(840, 130, 'リスタート', () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages }));
 
