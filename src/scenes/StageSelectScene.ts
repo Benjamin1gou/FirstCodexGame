@@ -6,6 +6,7 @@ type StageSelectData = {
   index?: number;
   totalTrapCost?: number;
   clearedStages?: number;
+  tutorialMode?: boolean;
 };
 
 export class StageSelectScene extends Scene {
@@ -36,7 +37,7 @@ export class StageSelectScene extends Scene {
     };
 
     const startStage = (): void => {
-      this.scene.start(SCENES.game, { stageIndex: cur, totalTrapCost: data.totalTrapCost ?? 0, clearedStages: data.clearedStages ?? 0 });
+      this.scene.start(SCENES.game, { stageIndex: cur, totalTrapCost: data.totalTrapCost ?? 0, clearedStages: data.clearedStages ?? 0, tutorialMode: data.tutorialMode ?? false });
     };
 
     const backToTitle = (): void => {
