@@ -86,3 +86,7 @@
 - [x] Web Audio APIによる8bit風BGM管理（AudioManager）を追加
 - [x] シーンごとのBGM切替と二重再生防止を追加
 - [x] ミュートUI（ボタン/Mキー）とlocalStorage保存を追加
+
+
+## Phase 14: Hero Goal Pursuit Fix
+- [x] 最短経路の次マスを優先する補正を追加し、ゴール無視の挙動を抑制
