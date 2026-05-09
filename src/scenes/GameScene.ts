@@ -16,7 +16,7 @@ import { HEROES } from '../data/heroes/heroes';
 import { createLog } from '../systems/LogSystem';
 import { getTileAssetKey } from './gameSceneTypes';
 
-type GameSceneData = { stageIndex: number; totalTrapCost: number; clearedStages: number };
+type GameSceneData = { stageIndex: number; totalTrapCost: number; clearedStages: number; tutorialMode?: boolean };
 const HERO_ASSET_BY_ID: Record<string, HeroAssetKey> = { adel: ASSET_KEYS.heroes.adel, mio: ASSET_KEYS.heroes.mio, serena: ASSET_KEYS.heroes.serena };
 
 export class GameScene extends Scene {
@@ -30,6 +30,17 @@ export class GameScene extends Scene {
   private trapSprites: Phaser.GameObjects.GameObject[] = []; private predictionMarkers: Phaser.GameObjects.GameObject[] = []; private placementHistory: PlacedTrap[] = []; private latestRank: StageRank | null = null;
   private boardTileSize = TILE_SIZE;
   private boardOffset = { x: 20, y: 140 };
+  private tutorialMode = false;
+  private tutorialStepIndex = 0;
+  private tutorialOverlay: Phaser.GameObjects.Rectangle | null = null;
+  private tutorialText: Phaser.GameObjects.Text | null = null;
+
+  private static readonly TUTORIAL_STEPS: readonly string[] = [
+    'チュートリアル 1/4\n罠カードを選んで、盤面をタップすると罠を配置できます。',
+    'チュートリアル 2/4\n上部の予測ルート点を見て、勇者の進行先を確認しましょう。',
+    'チュートリアル 3/4\n配置をやり直すときは Backspace または「1手戻し」を使います。',
+    'チュートリアル 4/4\n準備ができたら ENTER または「実行」で進行開始です。'
+  ] as const;
 
   private static readonly LAYOUT = {
     topPanelHeight: 136,
@@ -40,12 +51,15 @@ export class GameScene extends Scene {
   } as const;
   create(data: GameSceneData): void {
     this.stageIndex = data.stageIndex ?? 0; this.totalTrapCost = data.totalTrapCost ?? 0; this.clearedStages = data.clearedStages ?? 0;
+    this.tutorialMode = data.tutorialMode ?? false;
     const stage = loadStageByIndex(this.stageIndex); const heroDef = HEROES.find((hero) => hero.id === stage.heroId); if (!heroDef) throw new Error(`Hero definition not found: ${stage.heroId}`);
     this.state = { stageId: stage.id, hero: { heroId: heroDef.id, name: heroDef.name, hp: heroDef.maxHp, maxHp: heroDef.maxHp, position: { ...stage.startPosition }, traits: heroDef.traits, memory: { seenTraps: [] }, currentTarget: stage.goalPosition, status: 'alive', skipTurns: 0 }, placedTraps: [...stage.initialTraps], turn: 0, status: 'playing', phase: 'planning', logs: [createLog('phase_changed', 0, { phase: 'PLANNING' })], score: 0, usedTrapCost: 0 };
     this.computeBoardLayout(stage); this.renderBoard(stage); this.renderUi(stage, heroDef.name); this.refreshPredictions(stage);
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.handleTrapPlacement(pointer, stage));
     this.input.keyboard?.on('keydown-R', () => this.scene.restart(data)); this.input.keyboard?.on('keydown-ENTER', () => this.startRunning()); this.input.keyboard?.on('keydown-SPACE', () => this.startRunning()); this.input.keyboard?.on('keydown-BACKSPACE', () => this.undoLastPlacement(stage));
+    this.input.keyboard?.on('keydown-H', () => this.openTutorial());
     this.time.addEvent({ delay: TURN_INTERVAL_MS, loop: true, callback: () => this.stepSimulation(stage) }); this.updateUi(stage);
+    if (this.tutorialMode) this.openTutorial();
   }
   private computeBoardLayout(stage: StageDefinition): void {
     const availableWidth = GAME_WIDTH - GameScene.LAYOUT.sideMargin * 2;
@@ -137,4 +151,33 @@ export class GameScene extends Scene {
   }
 
   private updateUi(stage: StageDefinition): void { this.hpText.setText(`${this.state.hero.hp}/${this.state.hero.maxHp}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${stage.trapLimit}`); this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING / 選択中:${TRAPS[this.selectedTrap].name}` : 'PHASE: RUNNING'); this.logsText.setText(this.state.logs.slice(-8).map((log) => `[${log.turn}] ${log.text}`).join('\n')); this.updateTrapButtonState(); }
+
+  private openTutorial(): void {
+    if (!this.tutorialMode && this.state.phase !== 'planning') return;
+    this.tutorialStepIndex = 0;
+    this.showTutorialStep();
+  }
+
+  private showTutorialStep(): void {
+    this.destroyTutorialOverlay();
+    this.tutorialOverlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7).setOrigin(0).setDepth(2000);
+    const body = GameScene.TUTORIAL_STEPS[this.tutorialStepIndex] ?? 'チュートリアルは完了しました。';
+    this.tutorialText = this.add.text(120, 200, `${body}\n\nクリック / タップで次へ`, { fontSize: '28px', color: '#ffffff', wordWrap: { width: GAME_WIDTH - 240 } }).setDepth(2001);
+    this.tutorialOverlay.setInteractive({ useHandCursor: true });
+    this.tutorialOverlay.on('pointerdown', () => {
+      this.tutorialStepIndex += 1;
+      if (this.tutorialStepIndex >= GameScene.TUTORIAL_STEPS.length) {
+        this.destroyTutorialOverlay();
+        return;
+      }
+      this.showTutorialStep();
+    });
+  }
+
+  private destroyTutorialOverlay(): void {
+    this.tutorialOverlay?.destroy();
+    this.tutorialText?.destroy();
+    this.tutorialOverlay = null;
+    this.tutorialText = null;
+  }
 }
