@@ -22,6 +22,7 @@ const HERO_ASSET_BY_ID: Record<string, HeroAssetKey> = { adel: ASSET_KEYS.heroes
 export class GameScene extends Scene {
   private state!: GameSimulationState; private stageIndex = 0; private totalTrapCost = 0; private clearedStages = 0; private selectedTrap: TrapType = 'spike';
   private heroSprite!: Phaser.GameObjects.Image; private logsText!: Phaser.GameObjects.Text; private hpText!: Phaser.GameObjects.Text; private modeText!: Phaser.GameObjects.Text; private infoText!: Phaser.GameObjects.Text; private predictionText!: Phaser.GameObjects.Text;
+  private trapButtons: Record<TrapType, Phaser.GameObjects.Text> = { spike: null as unknown as Phaser.GameObjects.Text, slime: null as unknown as Phaser.GameObjects.Text, decoy: null as unknown as Phaser.GameObjects.Text };
   private trapSprites: Phaser.GameObjects.GameObject[] = []; private predictionMarkers: Phaser.GameObjects.GameObject[] = []; private placementHistory: PlacedTrap[] = []; private latestRank: StageRank | null = null;
   create(data: GameSceneData): void {
     this.stageIndex = data.stageIndex ?? 0; this.totalTrapCost = data.totalTrapCost ?? 0; this.clearedStages = data.clearedStages ?? 0;
@@ -39,12 +40,23 @@ export class GameScene extends Scene {
     this.add.image(16, 8, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, 190); this.add.image(16, GAME_HEIGHT - 220, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, 204);
     this.add.text(30, 16, `${stage.chapterTitle} ${stage.name}`, { fontSize: '24px' }); this.add.text(30, 48, `${heroName} HP`, { fontSize: '20px' }); this.hpText = this.add.text(160, 48, '', { fontSize: '20px' }); this.modeText = this.add.text(30, 74, '', { fontSize: '16px' });
     this.infoText = this.add.text(30, 96, '罠カード: [1]トゲ [2]スライム [3]デコイ / Backspace:1手戻し', { fontSize: '16px' }); this.predictionText = this.add.text(30, 120, '', { fontSize: '16px' });
-    this.add.text(30, 144, narrative.openingNarration, { fontSize: '15px', wordWrap: { width: GAME_WIDTH - 60 } }); this.logsText = this.add.text(30, GAME_HEIGHT - 208, '', { fontSize: '16px', wordWrap: { width: GAME_WIDTH - 70 } });
+    this.add.text(30, 144, narrative.openingNarration, { fontSize: '15px', wordWrap: { width: GAME_WIDTH - 60 } }); this.logsText = this.add.text(30, GAME_HEIGHT - 208, '', { fontSize: '14px', wordWrap: { width: 620 } });
+
+    // スマホでもタップだけで進行できるように、操作ボタンを右側に配置する。
+    this.trapButtons.spike = this.createTextButton(700, 30, 'トゲ罠', () => this.selectTrap('spike'));
+    this.trapButtons.slime = this.createTextButton(700, 80, 'スライム罠', () => this.selectTrap('slime'));
+    this.trapButtons.decoy = this.createTextButton(700, 130, 'デコイ罠', () => this.selectTrap('decoy'));
+    this.createTextButton(840, 30, '実行', () => this.startRunning());
+    this.createTextButton(840, 80, '1手戻し', () => this.undoLastPlacement(stage));
+    this.createTextButton(840, 130, 'リスタート', () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages }));
+
     this.input.keyboard?.on('keydown-ONE', () => this.selectTrap('spike')); this.input.keyboard?.on('keydown-TWO', () => this.selectTrap('slime')); this.input.keyboard?.on('keydown-THREE', () => this.selectTrap('decoy'));
   }
   private selectTrap(trap: TrapType): void { if (this.state.phase !== 'planning') return; this.selectedTrap = trap; this.state = { ...this.state, logs: [...this.state.logs, createLog('trap_selected', this.state.turn, { trapName: TRAPS[trap].name })] }; this.updateUi(loadStageByIndex(this.stageIndex)); }
   private handleTrapPlacement(pointer: Phaser.Input.Pointer, stage: StageDefinition): void {
     const tileX = Math.floor((pointer.x - BOARD_OFFSET.x) / TILE_SIZE); const tileY = Math.floor((pointer.y - BOARD_OFFSET.y) / TILE_SIZE);
+    // UIタップ時の誤配置を防ぐため、盤面範囲外は即時に無視する。
+    if (tileX < 0 || tileY < 0 || tileX >= stage.width || tileY >= stage.height) return;
     const result = canPlaceTrap(this.state.phase, stage, { x: tileX, y: tileY }, this.state.hero.position, this.state.placedTraps, this.state.placedTraps.length, this.state.usedTrapCost, TRAPS[this.selectedTrap].cost);
     if (!result.ok) { this.state = { ...this.state, logs: [...this.state.logs, createLog('placement_denied', this.state.turn, { reason: result.reason })] }; this.updateUi(stage); return; }
     const placedTrap: PlacedTrap = { x: tileX, y: tileY, type: this.selectedTrap }; this.placementHistory = [...this.placementHistory, placedTrap];
@@ -74,5 +86,26 @@ export class GameScene extends Scene {
     const nextIndex = this.stageIndex + 1; const totalUsedCost = this.totalTrapCost + this.state.usedTrapCost;
     if (nextIndex >= getStageCount()) { const ending = resolveEnding(true, totalUsedCost); this.scene.start(SCENES.gameOver, { win: true, text: `${ending.text}\nRANK:${this.latestRank ?? 'B'}`, stageIndex: this.stageIndex }); return; }
     this.scene.start(SCENES.stageSelect, { index: nextIndex, totalTrapCost: totalUsedCost, clearedStages: this.clearedStages + 1 }); }
-  private updateUi(stage: StageDefinition): void { this.hpText.setText(`${this.state.hero.hp}/${this.state.hero.maxHp}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${stage.trapLimit}`); this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING / 選択中:${TRAPS[this.selectedTrap].name}` : 'PHASE: RUNNING'); this.logsText.setText(this.state.logs.slice(-10).map((log) => `[${log.turn}] ${log.text}`).join('\n')); }
+
+  // 画面内ボタンを共通化し、タップ時に盤面クリックへ伝播しないようにする。
+  private createTextButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Text {
+    const button = this.add.text(x, y, label, { fontSize: '18px', color: '#ffffff', backgroundColor: '#3a4050', padding: { x: 12, y: 8 } });
+    button.setInteractive({ useHandCursor: true });
+    button.on('pointerdown', (pointer: Phaser.Input.Pointer) => { pointer.event.stopPropagation(); onClick(); });
+    return button;
+  }
+
+  // 選択中の罠を色で表示し、スマホ操作でも現在状態を分かりやすくする。
+  private updateTrapButtonState(): void {
+    const trapEntries: TrapType[] = ['spike', 'slime', 'decoy'];
+    trapEntries.forEach((trap) => {
+      const button = this.trapButtons[trap];
+      if (!button) return;
+      const selected = trap === this.selectedTrap;
+      button.setBackgroundColor(selected ? '#5b7cff' : '#3a4050');
+      button.setAlpha(this.state.phase === 'planning' ? 1 : 0.6);
+    });
+  }
+
+  private updateUi(stage: StageDefinition): void { this.hpText.setText(`${this.state.hero.hp}/${this.state.hero.maxHp}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${stage.trapLimit}`); this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING / 選択中:${TRAPS[this.selectedTrap].name}` : 'PHASE: RUNNING'); this.logsText.setText(this.state.logs.slice(-8).map((log) => `[${log.turn}] ${log.text}`).join('\n')); this.updateTrapButtonState(); }
 }

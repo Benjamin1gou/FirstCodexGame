@@ -58,3 +58,13 @@
 - [x] 1手戻し（Backspace）
 - [x] 配置不可理由ログ
 - [x] ランク評価表示
+
+## Phase 10: Mobile Browser Support
+- [x] Phaser scale FIT + autoCenter 対応
+- [x] スマホ向けCSS（100dvh / タッチ抑制）追加
+- [x] ステージ選択のタップUI追加（前へ/次へ/開始/タイトル）
+- [x] ゲーム画面のタップUI追加（罠選択/実行/1手戻し/リスタート）
+- [x] ゲームオーバー画面のタップUI追加
+- [x] 罠配置の盤面範囲ガードを強化
+- [x] タイトル画面に横画面推奨文言追加
+- [x] deploy workflow の build コマンド修正
