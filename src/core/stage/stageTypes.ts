@@ -1,6 +1,21 @@
-export type TileType = 'floor' | 'wall' | 'start' | 'goal' | 'trap' | 'treasure' | 'monster';
+export type TileType = 'floor' | 'wall' | 'start' | 'goal' | 'trap' | 'treasure' | 'monster' | 'chest';
 
 export type GridPosition = { x: number; y: number };
+
+export type TrapType = 'spike' | 'slime' | 'decoy';
+
+export type TrapDefinition = {
+  id: TrapType;
+  name: string;
+  cost: number;
+  damage: number;
+  effect: 'damage' | 'slow' | 'attract';
+  description: string;
+};
+
+export type PlacedTrap = GridPosition & {
+  type: TrapType;
+};
 
 export type StageDefinition = {
   id: string;
@@ -14,15 +29,8 @@ export type StageDefinition = {
   goalPosition: GridPosition;
   heroId: string;
   trapLimit: number;
-  initialTraps: GridPosition[];
+  initialTraps: PlacedTrap[];
+  chests: GridPosition[];
   tutorialHint: string;
   narrativeId: string;
-};
-
-export type TrapDefinition = {
-  id: string;
-  name: string;
-  damage: number;
-  cost: number;
-  description: string;
 };

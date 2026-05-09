@@ -45,3 +45,8 @@
 - [x] 不要外部通信スクリプト参照を削除
 - [x] `.gitignore` と `.env.example` を整備
 - [x] セキュリティチェック項目と秘密情報スキャン手順を更新
+
+## Phase 8: Hero AI Gameplay Upgrade
+- [x] traits中心のスコアリングAIに変更
+- [x] 宝箱誘導・罠記憶・思考ログを追加
+- [x] planning/runningフェーズ分離を追加

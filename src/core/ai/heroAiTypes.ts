@@ -30,3 +30,13 @@ export type HeroDefinition = {
   traits: HeroTraits;
   lines: string[];
 };
+
+export type HeroDecision = {
+  nextPosition: GridPosition;
+  reason: string;
+  scores: Array<{
+    position: GridPosition;
+    score: number;
+    reasons: string[];
+  }>;
+};
