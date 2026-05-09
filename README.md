@@ -83,3 +83,10 @@ npm run build
 - ローカル秘密情報は `.env` に置き、`.env` はコミットしません。
 - 開発開始手順: `npm ci` → `npm run dev`
 - ビルド確認: `npm run build`
+
+
+## BGM（8bit風）
+- Web Audio API で音源ファイルなしの8bit風BGM（title / dungeon）と結果ジングル（win / lose）を生成します。
+- ブラウザの自動再生制限に対応するため、初回タップ/クリックまたはキー入力後に再生されます。
+- ミュートは `M` キーまたは画面右上の `BGM: ON/OFF` ボタンで切り替えできます（状態は localStorage に保存）。
+- 将来は `public/assets/audio/*.ogg|mp3|wav` に差し替え可能なように、音声制御を `src/systems/AudioManager.ts` に分離しています。

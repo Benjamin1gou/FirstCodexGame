@@ -1,5 +1,7 @@
 import { Scene } from 'phaser';
 import { SCENES } from '../config/gameConfig';
+import { AudioManager } from '../systems/AudioManager';
+import { createMuteButton } from '../systems/AudioUi';
 
 export class TitleScene extends Scene {
   constructor() {
@@ -7,17 +9,36 @@ export class TitleScene extends Scene {
   }
 
   create(): void {
+    AudioManager.bindGlobalUnlock(this);
+    createMuteButton(this);
+    void AudioManager.playTitleBgm().catch(() => undefined);
     this.add.text(120, 120, '勇者誘導ダンジョン', { fontSize: '52px', color: '#fff' });
     this.add.text(140, 220, '通常: クリック / タップで開始', { fontSize: '28px', color: '#ffeb3b' });
     this.add.text(140, 258, 'チュートリアル: Hキー / 下のボタン', { fontSize: '24px', color: '#b8ffb0' });
     // スマホ利用者向けに横画面推奨を表示する。
     this.add.text(140, 300, 'スマホでは横画面がおすすめです', { fontSize: '22px', color: '#b0d8ff' });
 
-    this.createTextButton(140, 360, '通常プレイ', () => this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: false }));
-    this.createTextButton(340, 360, 'チュートリアル', () => this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: true }));
+    this.createTextButton(140, 360, '通常プレイ', () => {
+      void AudioManager.unlock().catch(() => undefined);
+      void AudioManager.playTitleBgm().catch(() => undefined);
+      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: false });
+    });
+    this.createTextButton(340, 360, 'チュートリアル', () => {
+      void AudioManager.unlock().catch(() => undefined);
+      void AudioManager.playTitleBgm().catch(() => undefined);
+      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: true });
+    });
 
-    this.input.keyboard?.on('keydown-H', () => this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: true }));
-    this.input.once('pointerdown', () => this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: false }));
+    this.input.keyboard?.on('keydown-H', () => {
+      void AudioManager.unlock().catch(() => undefined);
+      void AudioManager.playTitleBgm().catch(() => undefined);
+      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: true });
+    });
+    this.input.once('pointerdown', () => {
+      void AudioManager.unlock().catch(() => undefined);
+      void AudioManager.playTitleBgm().catch(() => undefined);
+      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: false });
+    });
   }
 
   private createTextButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Text {
