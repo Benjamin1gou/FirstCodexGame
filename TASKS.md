@@ -39,3 +39,8 @@
 - [x] README更新
 - [x] 追加改善（必要時）
 - [x] 画像素材ベース描画への移行（アセットキー/マニフェスト/Preload分離）
+
+## Phase 7: Security Hardening
+- [x] 不要外部通信スクリプト参照を削除
+- [x] `.gitignore` と `.env.example` を整備
+- [x] セキュリティチェック項目と秘密情報スキャン手順を更新

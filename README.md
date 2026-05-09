@@ -14,12 +14,12 @@ TypeScript + Phaser + Vite で作る、2D逆タワーディフェンス型パズ
 ## 起動方法
 ```bash
 npm ci
-npm run dev-nolog
+npm run dev
 ```
 
 ## ビルド方法
 ```bash
-npm run build-nolog
+npm run build
 ```
 
 ## ディレクトリ構成
@@ -77,3 +77,9 @@ npm run build-nolog
 - 勇者性格別の経路選好
 - 罠コストUI改善
 - Vitest で core 層テスト追加
+
+## セキュア運用メモ
+- このプロジェクトは外部APIキー不要で起動できます。
+- ローカル秘密情報は `.env` に置き、`.env` はコミットしません。
+- 開発開始手順: `npm ci` → `npm run dev`
+- ビルド確認: `npm run build`

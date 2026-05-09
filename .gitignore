@@ -1,3 +1,10 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+dist-ssr
+
 # Logs
 logs
 *.log
@@ -7,18 +14,38 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Local environment files
 *.local
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Local credentials / private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+
+# npm token config
+.npmrc
+
+# Service account / cloud credentials
+*service-account*.json
+*credentials*.json
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
