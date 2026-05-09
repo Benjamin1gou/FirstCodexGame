@@ -25,7 +25,7 @@ export class GameScene extends Scene {
   }
 
   private state!: GameSimulationState; private stageIndex = 0; private totalTrapCost = 0; private clearedStages = 0; private selectedTrap: TrapType = 'spike';
-  private heroSprite!: Phaser.GameObjects.Image; private logsText!: Phaser.GameObjects.Text; private hpText!: Phaser.GameObjects.Text; private modeText!: Phaser.GameObjects.Text; private infoText!: Phaser.GameObjects.Text; private predictionText!: Phaser.GameObjects.Text;
+  private heroSprite!: Phaser.GameObjects.Image; private logsText!: Phaser.GameObjects.Text; private hpText!: Phaser.GameObjects.Text; private modeText!: Phaser.GameObjects.Text; private infoText!: Phaser.GameObjects.Text; private predictionText!: Phaser.GameObjects.Text; private narrativeText!: Phaser.GameObjects.Text;
   private trapButtons: Record<TrapType, Phaser.GameObjects.Text> = { spike: null as unknown as Phaser.GameObjects.Text, slime: null as unknown as Phaser.GameObjects.Text, decoy: null as unknown as Phaser.GameObjects.Text };
   private trapSprites: Phaser.GameObjects.GameObject[] = []; private predictionMarkers: Phaser.GameObjects.GameObject[] = []; private placementHistory: PlacedTrap[] = []; private latestRank: StageRank | null = null;
   private boardTileSize = TILE_SIZE;
@@ -66,13 +66,15 @@ export class GameScene extends Scene {
     const narrative = getOpeningDialogue(stage.id);
     this.add.image(16, 8, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GameScene.LAYOUT.topPanelHeight - 12); this.add.image(16, GAME_HEIGHT - GameScene.LAYOUT.bottomPanelHeight, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GameScene.LAYOUT.bottomPanelHeight - 16);
     this.add.text(30, 16, `${stage.chapterTitle} ${stage.name}`, { fontSize: '24px' }); this.add.text(30, 48, `${heroName} HP`, { fontSize: '20px' }); this.hpText = this.add.text(160, 48, '', { fontSize: '20px' }); this.modeText = this.add.text(30, 74, '', { fontSize: '16px' });
-    this.infoText = this.add.text(30, 96, '罠カード: [1]トゲ [2]スライム [3]デコイ / Backspace:1手戻し', { fontSize: '16px' }); this.predictionText = this.add.text(30, 120, '', { fontSize: '16px' });
-    this.add.text(30, 100, narrative.openingNarration, { fontSize: '15px', wordWrap: { width: 650 } }); this.logsText = this.add.text(30, GAME_HEIGHT - GameScene.LAYOUT.bottomPanelHeight + 14, '', { fontSize: '14px', wordWrap: { width: 620 } });
+    this.infoText = this.add.text(30, 96, '罠カード: [1]トゲ [2]スライム [3]デコイ / Backspace:1手戻し', { fontSize: '16px' }); this.predictionText = this.add.text(30, 118, '', { fontSize: '16px' });
+    const buttonColumnX = 700;
+    const narrativeWidth = Math.max(200, buttonColumnX - 48);
+    this.narrativeText = this.add.text(30, 140, narrative.openingNarration, { fontSize: '15px', wordWrap: { width: narrativeWidth } }); this.logsText = this.add.text(30, GAME_HEIGHT - GameScene.LAYOUT.bottomPanelHeight + 14, '', { fontSize: '14px', wordWrap: { width: 620 } });
 
     // スマホでもタップだけで進行できるように、操作ボタンを右側に配置する。
-    this.trapButtons.spike = this.createTextButton(700, 30, 'トゲ罠', () => this.selectTrap('spike'));
-    this.trapButtons.slime = this.createTextButton(700, 80, 'スライム罠', () => this.selectTrap('slime'));
-    this.trapButtons.decoy = this.createTextButton(700, 130, 'デコイ罠', () => this.selectTrap('decoy'));
+    this.trapButtons.spike = this.createTextButton(buttonColumnX, 30, 'トゲ罠', () => this.selectTrap('spike'));
+    this.trapButtons.slime = this.createTextButton(buttonColumnX, 80, 'スライム罠', () => this.selectTrap('slime'));
+    this.trapButtons.decoy = this.createTextButton(buttonColumnX, 130, 'デコイ罠', () => this.selectTrap('decoy'));
     this.createTextButton(840, 30, '実行', () => this.startRunning());
     this.createTextButton(840, 80, '1手戻し', () => this.undoLastPlacement(stage));
     this.createTextButton(840, 130, 'リスタート', () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages }));
