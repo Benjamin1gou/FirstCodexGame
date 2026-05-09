@@ -5,6 +5,7 @@ export const TILE_SIZE = 56;
 export const BOARD_OFFSET = { x: 20, y: 140 } as const;
 
 export const SCENES = {
+  preload: 'PreloadScene',
   title: 'TitleScene',
   stageSelect: 'StageSelectScene',
   game: 'GameScene',
