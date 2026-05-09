@@ -1,14 +1,17 @@
+import { ASSET_KEYS, type TileAssetKey } from '../assets/assetKeys';
 import type { StageDefinition, TileType } from '../core/stage/stageTypes';
 
-export const TILE_COLORS: Record<TileType, number> = {
-  floor: 0xdddddd,
-  wall: 0x444444,
-  start: 0x4caf50,
-  goal: 0x7b1fa2,
-  trap: 0xd32f2f,
-  treasure: 0xffc107,
-  monster: 0xff5722
+const TILE_ASSET_BY_TYPE: Record<TileType, TileAssetKey> = {
+  floor: ASSET_KEYS.tiles.floor,
+  wall: ASSET_KEYS.tiles.wall,
+  start: ASSET_KEYS.tiles.start,
+  goal: ASSET_KEYS.tiles.goal,
+  trap: ASSET_KEYS.tiles.trap,
+  treasure: ASSET_KEYS.tiles.treasure,
+  monster: ASSET_KEYS.tiles.monster
 };
+
+export const getTileAssetKey = (tileType: TileType): TileAssetKey => TILE_ASSET_BY_TYPE[tileType];
 
 export const isTileInBounds = (stage: StageDefinition, x: number, y: number): boolean => {
   return y >= 0 && y < stage.height && x >= 0 && x < stage.width;

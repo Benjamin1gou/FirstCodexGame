@@ -27,7 +27,7 @@
 
 ## Phase 4: Testing
 - [x] build 実行
-- [ ] 必要なら test 実行
+- [x] 必要なら test 実行
 - [ ] 余力があれば Playwright スモークテスト
 
 ## Phase 5: GitHub Pages
@@ -37,3 +37,4 @@
 ## Phase 6: Polish
 - [x] README更新
 - [x] 追加改善（必要時）
+- [x] 画像素材ベース描画への移行（アセットキー/マニフェスト/Preload分離）

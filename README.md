@@ -28,6 +28,26 @@ npm run build-nolog
 - `src/data`: ステージ・勇者・ナラティブ定義
 - `src/systems`: ログなど横断処理
 - `src/config`: ゲーム設定
+- `src/assets`: 画像キー・マニフェスト・preload処理
+- `public/assets`: 差し替え可能な画像素材
+
+## 画像アセット運用
+- アセットキー定義: `src/assets/assetKeys.ts`
+- 画像パス管理: `src/assets/assetManifest.ts`
+- 読み込み処理: `src/assets/preloadAssets.ts`
+- 推奨サイズ: タイル/勇者/罠は 56x56（表示時は `TILE_SIZE` に合わせて拡縮）
+
+### 新しい勇者画像を追加する手順
+1. `public/assets/characters/heroes/hero_<id>.svg` を追加
+2. `assetKeys.ts` にキーを追加
+3. `assetManifest.ts` に key/path を追加
+4. `GameScene` の heroId 対応表にマッピングを追加
+
+### 新しいタイル画像を追加する手順
+1. `public/assets/tiles/<tile>.svg` を追加
+2. `assetKeys.ts` にキーを追加
+3. `assetManifest.ts` に key/path を追加
+4. `gameSceneTypes.ts` の TileType 対応表にマッピングを追加
 
 ## データ追加方法
 - ステージ: `src/data/stages/stage-xxx.ts` を追加し `stageRepository.ts` に登録
