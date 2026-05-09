@@ -20,6 +20,7 @@ export type HeroState = {
   memory: { seenTraps: GridPosition[] };
   currentTarget: GridPosition | null;
   status: HeroStatus;
+  skipTurns: number;
 };
 
 export type HeroDefinition = {

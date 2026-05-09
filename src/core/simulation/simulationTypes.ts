@@ -13,7 +13,14 @@ export type LogType =
   | 'treasure_selected'
   | 'danger_avoided'
   | 'hero_reason'
-  | 'phase_changed';
+  | 'phase_changed'
+  | 'trap_selected'
+  | 'trap_removed'
+  | 'placement_denied'
+  | 'prediction_updated'
+  | 'hero_slowed'
+  | 'decoy_reacted'
+  | 'rank_shown';
 
 export type ActionLog = { type: LogType; text: string; turn: number };
 
