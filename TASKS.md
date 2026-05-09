@@ -34,6 +34,7 @@
 - [x] Vite base 設定
 - [x] deploy workflow 追加
 - [x] Pages デプロイ 404 対応（configure-pages 追加）
+- [x] `configure-pages` の enablement API 呼び出しを削除（権限不足エラー対策）
 
 ## Phase 6: Polish
 - [x] README更新
