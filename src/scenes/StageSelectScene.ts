@@ -3,6 +3,7 @@ import { SCENES } from '../config/gameConfig';
 import { STAGES } from '../core/stage/stageRepository';
 import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
+import { createTextButton } from '../ui/TextButton';
 
 type StageSelectData = {
   index?: number;
@@ -51,10 +52,10 @@ export class StageSelectScene extends Scene {
     };
 
     // スマホでも押しやすいように画面内ボタンを追加する。
-    this.createTextButton(120, 480, '前へ', movePrev);
-    this.createTextButton(260, 480, '次へ', moveNext);
-    this.createTextButton(400, 480, '開始', startStage);
-    this.createTextButton(540, 480, 'タイトルへ', backToTitle);
+    createTextButton(this, { x: 120, y: 480, label: '前へ', fontSize: '24px', padding: { x: 16, y: 10 }, onClick: movePrev });
+    createTextButton(this, { x: 260, y: 480, label: '次へ', fontSize: '24px', padding: { x: 16, y: 10 }, onClick: moveNext });
+    createTextButton(this, { x: 400, y: 480, label: '開始', fontSize: '24px', padding: { x: 16, y: 10 }, onClick: startStage });
+    createTextButton(this, { x: 540, y: 480, label: 'タイトルへ', fontSize: '24px', padding: { x: 16, y: 10 }, onClick: backToTitle });
 
     // 既存キーボード操作は維持しつつ、同じ処理を呼ぶ。
     this.input.keyboard?.on('keydown-LEFT', movePrev);
@@ -63,18 +64,4 @@ export class StageSelectScene extends Scene {
     this.input.keyboard?.on('keydown-T', backToTitle);
   }
 
-  private createTextButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Text {
-    const button = this.add.text(x, y, label, {
-      fontSize: '24px',
-      color: '#ffffff',
-      backgroundColor: '#3a4050',
-      padding: { x: 16, y: 10 }
-    });
-    button.setInteractive({ useHandCursor: true });
-    button.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      pointer.event.stopPropagation();
-      onClick();
-    });
-    return button;
-  }
 }

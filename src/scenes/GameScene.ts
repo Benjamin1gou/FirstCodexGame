@@ -1,197 +1,74 @@
 import { Scene } from 'phaser';
-import { ASSET_KEYS, type HeroAssetKey } from '../assets/assetKeys';
-import { GAME_HEIGHT, GAME_WIDTH, SCENES, TILE_SIZE, TRAPS, TURN_INTERVAL_MS } from '../config/gameConfig';
+import { ASSET_KEYS } from '../assets/assetKeys';
+import { GAME_HEIGHT, GAME_WIDTH, SCENES, TRAPS, TURN_INTERVAL_MS } from '../config/gameConfig';
 import { decideHeroAction } from '../core/ai/heroDecisionEngine';
 import { getOpeningDialogue } from '../core/narrative/dialogueSelector';
 import { resolveEnding } from '../core/narrative/endingResolver';
 import { canPlaceTrap } from '../core/rules/placementRules';
 import { evaluateStageRank, type StageRank } from '../core/rules/rankEvaluator';
 import { judgeStageStatus } from '../core/rules/victoryJudge';
-import { predictRoute, type RoutePrediction } from '../core/simulation/predictRoute';
+import { predictRoute } from '../core/simulation/predictRoute';
 import { applyTrapEffect } from '../core/simulation/trapEffects';
 import type { GamePhase, GameSimulationState } from '../core/simulation/simulationTypes';
 import { getStageCount, loadStageByIndex } from '../core/stage/stageLoader';
-import type { GridPosition, PlacedTrap, StageDefinition, TrapType } from '../core/stage/stageTypes';
-import { HEROES } from '../data/heroes/heroes';
+import type { PlacedTrap, StageDefinition, TrapType } from '../core/stage/stageTypes';
 import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
 import { createLog } from '../systems/LogSystem';
-import { getTileAssetKey } from './gameSceneTypes';
+import { createTextButton } from '../ui/TextButton';
+import { renderBoardTiles, renderTrapTile } from './game/BoardRenderer';
+import { createHeroSprite, updateHeroSpritePosition } from './game/HeroRenderer';
+import { computeBoardLayout, GAME_SCENE_LAYOUT } from './game/GameSceneLayout';
+import { createInitialSimulationState } from './game/GameSceneStateFactory';
 
 type GameSceneData = { stageIndex: number; totalTrapCost: number; clearedStages: number; tutorialMode?: boolean };
-const HERO_ASSET_BY_ID: Record<string, HeroAssetKey> = { adel: ASSET_KEYS.heroes.adel, mio: ASSET_KEYS.heroes.mio, serena: ASSET_KEYS.heroes.serena };
 
 export class GameScene extends Scene {
-  constructor() {
-    super(SCENES.game);
-  }
-
+  constructor() { super(SCENES.game); }
   private state!: GameSimulationState; private stageIndex = 0; private totalTrapCost = 0; private clearedStages = 0; private selectedTrap: TrapType = 'spike';
-  private heroSprite!: Phaser.GameObjects.Image; private logsText!: Phaser.GameObjects.Text; private hpText!: Phaser.GameObjects.Text; private modeText!: Phaser.GameObjects.Text; private infoText!: Phaser.GameObjects.Text; private predictionText!: Phaser.GameObjects.Text; private narrativeText!: Phaser.GameObjects.Text;
-  private trapButtons: Record<TrapType, Phaser.GameObjects.Text> = { spike: null as unknown as Phaser.GameObjects.Text, slime: null as unknown as Phaser.GameObjects.Text, decoy: null as unknown as Phaser.GameObjects.Text, arrow: null as unknown as Phaser.GameObjects.Text, fear: null as unknown as Phaser.GameObjects.Text, pitfall: null as unknown as Phaser.GameObjects.Text };
+  private heroSprite!: Phaser.GameObjects.Image; private logsText!: Phaser.GameObjects.Text; private hpText!: Phaser.GameObjects.Text; private modeText!: Phaser.GameObjects.Text; private predictionText!: Phaser.GameObjects.Text;
+  private trapButtons = {} as Record<TrapType, Phaser.GameObjects.Text>;
   private trapSprites: Phaser.GameObjects.GameObject[] = []; private predictionMarkers: Phaser.GameObjects.GameObject[] = []; private placementHistory: PlacedTrap[] = []; private latestRank: StageRank | null = null;
-  private boardTileSize = TILE_SIZE;
-  private boardOffset = { x: 20, y: 140 };
-  private tutorialMode = false;
-  private tutorialStepIndex = 0;
-  private tutorialOverlay: Phaser.GameObjects.Rectangle | null = null;
-  private tutorialText: Phaser.GameObjects.Text | null = null;
+  private boardTileSize = 56; private boardOffset = { x: 20, y: 140 }; private tutorialMode = false; private tutorialStepIndex = 0;
+  private tutorialOverlay: Phaser.GameObjects.Rectangle | null = null; private tutorialText: Phaser.GameObjects.Text | null = null;
+  private static readonly TUTORIAL_STEPS = ['チュートリアル 1/4\n罠カードを選んで、盤面をタップすると罠を配置できます。','チュートリアル 2/4\n上部の予測ルート点を見て、勇者の進行先を確認しましょう。','チュートリアル 3/4\n配置をやり直すときは Backspace または「1手戻し」を使います。','チュートリアル 4/4\n準備ができたら ENTER または「実行」で進行開始です。'] as const;
 
-  private static readonly TUTORIAL_STEPS: readonly string[] = [
-    'チュートリアル 1/4\n罠カードを選んで、盤面をタップすると罠を配置できます。',
-    'チュートリアル 2/4\n上部の予測ルート点を見て、勇者の進行先を確認しましょう。',
-    'チュートリアル 3/4\n配置をやり直すときは Backspace または「1手戻し」を使います。',
-    'チュートリアル 4/4\n準備ができたら ENTER または「実行」で進行開始です。'
-  ] as const;
-
-  private static readonly LAYOUT = {
-    topPanelHeight: 136,
-    bottomPanelHeight: 188,
-    sideMargin: 16,
-    boardTopPadding: 12,
-    boardBottomPadding: 12
-  } as const;
   create(data: GameSceneData): void {
-    AudioManager.bindGlobalUnlock(this);
-    createMuteButton(this);
-    void AudioManager.playDungeonBgm().catch(() => undefined);
-    this.stageIndex = data.stageIndex ?? 0; this.totalTrapCost = data.totalTrapCost ?? 0; this.clearedStages = data.clearedStages ?? 0;
-    this.tutorialMode = data.tutorialMode ?? false;
-    const stage = loadStageByIndex(this.stageIndex); const heroDef = HEROES.find((hero) => hero.id === stage.heroId); if (!heroDef) throw new Error(`Hero definition not found: ${stage.heroId}`);
-    this.state = { stageId: stage.id, hero: { heroId: heroDef.id, name: heroDef.name, hp: heroDef.maxHp, maxHp: heroDef.maxHp, position: { ...stage.startPosition }, traits: heroDef.traits, memory: { seenTraps: [], lastPosition: null }, currentTarget: stage.goalPosition, status: 'alive', skipTurns: 0 }, placedTraps: [...stage.initialTraps], turn: 0, status: 'playing', phase: 'planning', logs: [createLog('phase_changed', 0, { phase: 'PLANNING' })], score: 0, usedTrapCost: 0 };
-    this.computeBoardLayout(stage); this.renderBoard(stage); this.renderUi(stage, heroDef.name); this.refreshPredictions(stage);
+    AudioManager.bindGlobalUnlock(this); createMuteButton(this); void AudioManager.playDungeonBgm().catch(() => undefined);
+    this.stageIndex = data.stageIndex ?? 0; this.totalTrapCost = data.totalTrapCost ?? 0; this.clearedStages = data.clearedStages ?? 0; this.tutorialMode = data.tutorialMode ?? false;
+    const stage = loadStageByIndex(this.stageIndex); const initial = createInitialSimulationState(stage); this.state = initial.state;
+    const layout = computeBoardLayout(stage); this.boardTileSize = layout.tileSize; this.boardOffset = layout.boardOffset;
+    renderBoardTiles(this, stage, this.boardTileSize, this.boardOffset); this.heroSprite = createHeroSprite(this, stage.heroId, stage.startPosition, this.boardTileSize, this.boardOffset);
+    this.renderUi(stage, initial.heroName); this.refreshPredictions(stage);
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.handleTrapPlacement(pointer, stage));
-    this.input.keyboard?.on('keydown-R', () => this.scene.restart(data)); this.input.keyboard?.on('keydown-ENTER', () => this.startRunning()); this.input.keyboard?.on('keydown-SPACE', () => this.startRunning()); this.input.keyboard?.on('keydown-BACKSPACE', () => this.undoLastPlacement(stage));
-    this.input.keyboard?.on('keydown-H', () => this.openTutorial());
-    this.time.addEvent({ delay: TURN_INTERVAL_MS, loop: true, callback: () => this.stepSimulation(stage) }); this.updateUi(stage);
-    if (this.tutorialMode) this.openTutorial();
-  }
-  private computeBoardLayout(stage: StageDefinition): void {
-    const availableWidth = GAME_WIDTH - GameScene.LAYOUT.sideMargin * 2;
-    const availableHeight = GAME_HEIGHT - GameScene.LAYOUT.topPanelHeight - GameScene.LAYOUT.bottomPanelHeight - GameScene.LAYOUT.boardTopPadding - GameScene.LAYOUT.boardBottomPadding;
-    const maxTileByWidth = Math.floor(availableWidth / stage.width);
-    const maxTileByHeight = Math.floor(availableHeight / stage.height);
-    this.boardTileSize = Math.max(32, Math.min(TILE_SIZE, maxTileByWidth, maxTileByHeight));
-    const boardPixelWidth = this.boardTileSize * stage.width;
-    const boardPixelHeight = this.boardTileSize * stage.height;
-    this.boardOffset = {
-      x: Math.floor((GAME_WIDTH - boardPixelWidth) / 2),
-      y: GameScene.LAYOUT.topPanelHeight + GameScene.LAYOUT.boardTopPadding + Math.floor((availableHeight - boardPixelHeight) / 2)
-    };
+    this.input.keyboard?.on('keydown-R', () => this.scene.restart(data)); this.input.keyboard?.on('keydown-ENTER', () => this.startRunning()); this.input.keyboard?.on('keydown-SPACE', () => this.startRunning()); this.input.keyboard?.on('keydown-BACKSPACE', () => this.undoLastPlacement(stage)); this.input.keyboard?.on('keydown-H', () => this.openTutorial());
+    this.time.addEvent({ delay: TURN_INTERVAL_MS, loop: true, callback: () => this.stepSimulation(stage) }); this.updateUi(stage); if (this.tutorialMode) this.openTutorial();
   }
   private startRunning(): void { if (this.state.phase !== 'planning') return; this.state = { ...this.state, phase: 'running', logs: [...this.state.logs, createLog('phase_changed', this.state.turn, { phase: 'RUNNING' })] }; }
-  private renderBoard(stage: StageDefinition): void { for (let y = 0; y < stage.height; y += 1) for (let x = 0; x < stage.width; x += 1) this.add.image(this.boardOffset.x + x * this.boardTileSize, this.boardOffset.y + y * this.boardTileSize, getTileAssetKey(stage.tiles[y][x])).setOrigin(0).setDisplaySize(this.boardTileSize, this.boardTileSize); this.heroSprite = this.add.image(0, 0, HERO_ASSET_BY_ID[stage.heroId] ?? ASSET_KEYS.heroes.adel).setOrigin(0.5).setDisplaySize(this.boardTileSize * 0.82, this.boardTileSize * 0.82).setPosition(this.boardOffset.x + stage.startPosition.x * this.boardTileSize + this.boardTileSize / 2, this.boardOffset.y + stage.startPosition.y * this.boardTileSize + this.boardTileSize / 2); }
   private renderUi(stage: StageDefinition, heroName: string): void {
-    const narrative = getOpeningDialogue(stage.id);
-    this.add.image(16, 8, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GameScene.LAYOUT.topPanelHeight - 12); this.add.image(16, GAME_HEIGHT - GameScene.LAYOUT.bottomPanelHeight, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GameScene.LAYOUT.bottomPanelHeight - 16);
+    const narrative = getOpeningDialogue(stage.id); this.add.image(16, 8, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GAME_SCENE_LAYOUT.topPanelHeight - 12); this.add.image(16, GAME_HEIGHT - GAME_SCENE_LAYOUT.bottomPanelHeight, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GAME_SCENE_LAYOUT.bottomPanelHeight - 16);
     this.add.text(30, 16, `${stage.chapterTitle} ${stage.name}`, { fontSize: '24px' }); this.add.text(30, 48, `${heroName} HP`, { fontSize: '20px' }); this.hpText = this.add.text(160, 48, '', { fontSize: '20px' }); this.modeText = this.add.text(30, 74, '', { fontSize: '16px' });
-    this.infoText = this.add.text(30, 96, '罠: [1]トゲ [2]スライム [3]デコイ [4]矢雨 [5]恐怖 [6]落とし穴 / Backspace:1手戻し', { fontSize: '16px' }); this.predictionText = this.add.text(30, 118, '', { fontSize: '16px' });
-    const buttonColumnX = 700;
-    const narrativeWidth = Math.max(200, buttonColumnX - 48);
-    this.narrativeText = this.add.text(30, 140, narrative.openingNarration, { fontSize: '15px', wordWrap: { width: narrativeWidth } }); this.logsText = this.add.text(30, GAME_HEIGHT - GameScene.LAYOUT.bottomPanelHeight + 14, '', { fontSize: '14px', wordWrap: { width: 620 } });
-
-    // スマホでもタップだけで進行できるように、操作ボタンを右側に配置する。
-    this.trapButtons.spike = this.createTextButton(buttonColumnX, 30, 'トゲ罠', () => this.selectTrap('spike'));
-    this.trapButtons.slime = this.createTextButton(buttonColumnX, 80, 'スライム罠', () => this.selectTrap('slime'));
-    this.trapButtons.decoy = this.createTextButton(buttonColumnX, 130, 'デコイ罠', () => this.selectTrap('decoy'));
-    this.trapButtons.arrow = this.createTextButton(buttonColumnX, 180, '矢雨罠', () => this.selectTrap('arrow'));
-    this.trapButtons.fear = this.createTextButton(buttonColumnX, 230, '恐怖罠', () => this.selectTrap('fear'));
-    this.trapButtons.pitfall = this.createTextButton(buttonColumnX, 280, '落とし穴', () => this.selectTrap('pitfall'));
-    this.createTextButton(840, 30, '実行', () => {
-      void AudioManager.unlock().catch(() => undefined);
-      this.startRunning();
-    });
-    this.createTextButton(840, 80, '1手戻し', () => this.undoLastPlacement(stage));
-    this.createTextButton(840, 130, 'リスタート', () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages }));
-
-    this.input.keyboard?.on('keydown-ONE', () => this.selectTrap('spike')); this.input.keyboard?.on('keydown-TWO', () => this.selectTrap('slime')); this.input.keyboard?.on('keydown-THREE', () => this.selectTrap('decoy'));
-    this.input.keyboard?.on('keydown-FOUR', () => this.selectTrap('arrow')); this.input.keyboard?.on('keydown-FIVE', () => this.selectTrap('fear')); this.input.keyboard?.on('keydown-SIX', () => this.selectTrap('pitfall'));
+    this.add.text(30, 96, '罠: [1]トゲ [2]スライム [3]デコイ [4]矢雨 [5]恐怖 [6]落とし穴 / Backspace:1手戻し', { fontSize: '16px' }); this.predictionText = this.add.text(30, 118, '', { fontSize: '16px' });
+    this.add.text(30, 140, narrative.openingNarration, { fontSize: '15px', wordWrap: { width: Math.max(200, GAME_SCENE_LAYOUT.buttonColumnX - 48) } }); this.logsText = this.add.text(30, GAME_HEIGHT - GAME_SCENE_LAYOUT.bottomPanelHeight + 14, '', { fontSize: '14px', wordWrap: { width: 620 } });
+    this.trapButtons.spike = createTextButton(this, { x: GAME_SCENE_LAYOUT.buttonColumnX, y: 30, label: 'トゲ罠', onClick: () => this.selectTrap('spike') });
+    this.trapButtons.slime = createTextButton(this, { x: GAME_SCENE_LAYOUT.buttonColumnX, y: 80, label: 'スライム罠', onClick: () => this.selectTrap('slime') });
+    this.trapButtons.decoy = createTextButton(this, { x: GAME_SCENE_LAYOUT.buttonColumnX, y: 130, label: 'デコイ罠', onClick: () => this.selectTrap('decoy') });
+    this.trapButtons.arrow = createTextButton(this, { x: GAME_SCENE_LAYOUT.buttonColumnX, y: 180, label: '矢雨罠', onClick: () => this.selectTrap('arrow') });
+    this.trapButtons.fear = createTextButton(this, { x: GAME_SCENE_LAYOUT.buttonColumnX, y: 230, label: '恐怖罠', onClick: () => this.selectTrap('fear') });
+    this.trapButtons.pitfall = createTextButton(this, { x: GAME_SCENE_LAYOUT.buttonColumnX, y: 280, label: '落とし穴', onClick: () => this.selectTrap('pitfall') });
+    createTextButton(this, { x: GAME_SCENE_LAYOUT.actionButtonX, y: 30, label: '実行', onClick: () => { void AudioManager.unlock().catch(() => undefined); this.startRunning(); } });
+    createTextButton(this, { x: GAME_SCENE_LAYOUT.actionButtonX, y: 80, label: '1手戻し', onClick: () => this.undoLastPlacement(stage) });
+    createTextButton(this, { x: GAME_SCENE_LAYOUT.actionButtonX, y: 130, label: 'リスタート', onClick: () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages }) });
   }
   private selectTrap(trap: TrapType): void { if (this.state.phase !== 'planning') return; this.selectedTrap = trap; this.state = { ...this.state, logs: [...this.state.logs, createLog('trap_selected', this.state.turn, { trapName: TRAPS[trap].name })] }; this.updateUi(loadStageByIndex(this.stageIndex)); }
-  private handleTrapPlacement(pointer: Phaser.Input.Pointer, stage: StageDefinition): void {
-    const tileX = Math.floor((pointer.x - this.boardOffset.x) / this.boardTileSize); const tileY = Math.floor((pointer.y - this.boardOffset.y) / this.boardTileSize);
-    // UIタップ時の誤配置を防ぐため、盤面範囲外は即時に無視する。
-    if (tileX < 0 || tileY < 0 || tileX >= stage.width || tileY >= stage.height) return;
-    const result = canPlaceTrap(this.state.phase, stage, { x: tileX, y: tileY }, this.state.hero.position, this.state.placedTraps, this.state.placedTraps.length, this.state.usedTrapCost, TRAPS[this.selectedTrap].cost);
-    if (!result.ok) { this.state = { ...this.state, logs: [...this.state.logs, createLog('placement_denied', this.state.turn, { reason: result.reason })] }; this.updateUi(stage); return; }
-    const placedTrap: PlacedTrap = { x: tileX, y: tileY, type: this.selectedTrap }; this.placementHistory = [...this.placementHistory, placedTrap];
-    this.state = { ...this.state, placedTraps: [...this.state.placedTraps, placedTrap], usedTrapCost: this.state.usedTrapCost + TRAPS[this.selectedTrap].cost, logs: [...this.state.logs, createLog('trap_placed', this.state.turn, { trapName: TRAPS[this.selectedTrap].name })] };
-    const sprite = this.add.image(this.boardOffset.x + tileX * this.boardTileSize, this.boardOffset.y + tileY * this.boardTileSize, ASSET_KEYS.tiles.trap).setOrigin(0).setDisplaySize(this.boardTileSize, this.boardTileSize); this.trapSprites.push(sprite);
-    this.refreshPredictions(stage); this.updateUi(stage);
-  }
-  private undoLastPlacement(stage: StageDefinition): void { if (this.state.phase !== 'planning') return; const last = this.placementHistory[this.placementHistory.length - 1]; if (!last) return; this.placementHistory = this.placementHistory.slice(0, -1); const trapCost = TRAPS[last.type].cost;
-    this.state = { ...this.state, placedTraps: this.state.placedTraps.filter((t, i) => i !== this.state.placedTraps.length - 1), usedTrapCost: Math.max(0, this.state.usedTrapCost - trapCost), logs: [...this.state.logs, createLog('trap_removed', this.state.turn, { trapName: TRAPS[last.type].name })] };
-    const sprite = this.trapSprites.pop(); sprite?.destroy(); this.refreshPredictions(stage); this.updateUi(stage);
-  }
-  private refreshPredictions(stage: StageDefinition): void { const predicted: RoutePrediction = predictRoute(this.state.hero, stage, this.state.placedTraps, 20); this.predictionMarkers.forEach((m) => m.destroy()); this.predictionMarkers = predicted.positions.map((p) => this.add.circle(this.boardOffset.x + p.x * this.boardTileSize + this.boardTileSize / 2, this.boardOffset.y + p.y * this.boardTileSize + this.boardTileSize / 2, 4, 0x99ff99, 0.6)); this.predictionText.setText(predicted.summary); this.state = { ...this.state, logs: [...this.state.logs, createLog('prediction_updated', this.state.turn)] }; }
-  private stepSimulation(stage: StageDefinition): void {
-    if (this.state.status !== 'playing' || this.state.phase !== 'running') return;
-    if (this.state.hero.skipTurns > 0) { this.state = { ...this.state, turn: this.state.turn + 1, hero: { ...this.state.hero, skipTurns: this.state.hero.skipTurns - 1 }, logs: [...this.state.logs, createLog('hero_slowed', this.state.turn + 1, { heroName: this.state.hero.name })] }; this.updateUi(stage); return; }
-    const decision = decideHeroAction(this.state.hero, stage.tiles, stage.goalPosition, this.state.placedTraps, stage.chests);
-    const steppedTrap = this.state.placedTraps.find((trap) => trap.x === decision.nextPosition.x && trap.y === decision.nextPosition.y);
-    const effect = applyTrapEffect(steppedTrap, this.state.turn + 1, this.state.hero.name);
-    const seenTraps = steppedTrap && !this.state.hero.memory.seenTraps.some((p) => p.x === steppedTrap.x && p.y === steppedTrap.y) ? [...this.state.hero.memory.seenTraps, { x: steppedTrap.x, y: steppedTrap.y }] : this.state.hero.memory.seenTraps;
-    const previousPosition = { ...this.state.hero.position };
-    const nextPosition = effect.reverseStep ? previousPosition : decision.nextPosition;
-    let nextState: GameSimulationState = { ...this.state, turn: this.state.turn + 1, hero: { ...this.state.hero, position: nextPosition as GridPosition, hp: this.state.hero.hp + effect.hpDelta, skipTurns: effect.skipTurns, memory: { ...this.state.hero.memory, seenTraps, lastPosition: previousPosition } }, logs: [...this.state.logs, createLog('hero_reason', this.state.turn + 1, { reason: decision.reason }), ...effect.logs] };
-    const judgedStatus = judgeStageStatus(nextState, stage.goalPosition); nextState = { ...nextState, status: judgedStatus, phase: judgedStatus === 'playing' ? 'running' : (judgedStatus as GamePhase) };
-    this.state = nextState; this.heroSprite.setPosition(this.boardOffset.x + nextState.hero.position.x * this.boardTileSize + this.boardTileSize / 2, this.boardOffset.y + nextState.hero.position.y * this.boardTileSize + this.boardTileSize / 2); this.updateUi(stage);
-    if (judgedStatus !== 'playing') this.finishStage(judgedStatus);
-  }
-  private finishStage(status: 'cleared' | 'failed'): void { if (status === 'cleared') { this.latestRank = evaluateStageRank({ usedCost: this.state.usedTrapCost, trapCount: this.state.placedTraps.length, turnCount: this.state.turn, remainingHp: Math.max(0, this.state.hero.hp), maxHp: this.state.hero.maxHp }); this.state = { ...this.state, logs: [...this.state.logs, createLog('rank_shown', this.state.turn, { rank: this.latestRank })] }; }
-    if (status === 'failed') { const ending = resolveEnding(false, this.totalTrapCost + this.state.usedTrapCost); this.scene.start(SCENES.gameOver, { win: false, text: ending.text, stageIndex: this.stageIndex }); return; }
-    const nextIndex = this.stageIndex + 1; const totalUsedCost = this.totalTrapCost + this.state.usedTrapCost;
-    if (nextIndex >= getStageCount()) { const ending = resolveEnding(true, totalUsedCost); this.scene.start(SCENES.gameOver, { win: true, text: `${ending.text}\nRANK:${this.latestRank ?? 'B'}`, stageIndex: this.stageIndex }); return; }
-    this.scene.start(SCENES.stageSelect, { index: nextIndex, totalTrapCost: totalUsedCost, clearedStages: this.clearedStages + 1 }); }
-
-  // 画面内ボタンを共通化し、タップ時に盤面クリックへ伝播しないようにする。
-  private createTextButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Text {
-    const button = this.add.text(x, y, label, { fontSize: '18px', color: '#ffffff', backgroundColor: '#3a4050', padding: { x: 12, y: 8 } });
-    button.setInteractive({ useHandCursor: true });
-    button.on('pointerdown', (pointer: Phaser.Input.Pointer) => { pointer.event.stopPropagation(); onClick(); });
-    return button;
-  }
-
-  // 選択中の罠を色で表示し、スマホ操作でも現在状態を分かりやすくする。
-  private updateTrapButtonState(): void {
-    const trapEntries: TrapType[] = ['spike', 'slime', 'decoy', 'arrow', 'fear', 'pitfall'];
-    trapEntries.forEach((trap) => {
-      const button = this.trapButtons[trap];
-      if (!button) return;
-      const selected = trap === this.selectedTrap;
-      button.setBackgroundColor(selected ? '#5b7cff' : '#3a4050');
-      button.setAlpha(this.state.phase === 'planning' ? 1 : 0.6);
-    });
-  }
-
+  private handleTrapPlacement(pointer: Phaser.Input.Pointer, stage: StageDefinition): void { const tileX = Math.floor((pointer.x - this.boardOffset.x) / this.boardTileSize); const tileY = Math.floor((pointer.y - this.boardOffset.y) / this.boardTileSize); if (tileX < 0 || tileY < 0 || tileX >= stage.width || tileY >= stage.height) return; const result = canPlaceTrap(this.state.phase, stage, { x: tileX, y: tileY }, this.state.hero.position, this.state.placedTraps, this.state.placedTraps.length, this.state.usedTrapCost, TRAPS[this.selectedTrap].cost); if (!result.ok) { this.state = { ...this.state, logs: [...this.state.logs, createLog('placement_denied', this.state.turn, { reason: result.reason })] }; this.updateUi(stage); return; } const placedTrap: PlacedTrap = { x: tileX, y: tileY, type: this.selectedTrap }; this.placementHistory = [...this.placementHistory, placedTrap]; this.state = { ...this.state, placedTraps: [...this.state.placedTraps, placedTrap], usedTrapCost: this.state.usedTrapCost + TRAPS[this.selectedTrap].cost, logs: [...this.state.logs, createLog('trap_placed', this.state.turn, { trapName: TRAPS[this.selectedTrap].name })] }; this.trapSprites.push(renderTrapTile(this, tileX, tileY, this.boardTileSize, this.boardOffset)); this.refreshPredictions(stage); this.updateUi(stage); }
+  private undoLastPlacement(stage: StageDefinition): void { if (this.state.phase !== 'planning') return; const last = this.placementHistory[this.placementHistory.length - 1]; if (!last) return; this.placementHistory = this.placementHistory.slice(0, -1); const trapCost = TRAPS[last.type].cost; this.state = { ...this.state, placedTraps: this.state.placedTraps.filter((t, i) => i !== this.state.placedTraps.length - 1), usedTrapCost: Math.max(0, this.state.usedTrapCost - trapCost), logs: [...this.state.logs, createLog('trap_removed', this.state.turn, { trapName: TRAPS[last.type].name })] }; this.trapSprites.pop()?.destroy(); this.refreshPredictions(stage); this.updateUi(stage); }
+  private refreshPredictions(stage: StageDefinition): void { const predicted = predictRoute(this.state.hero, stage, this.state.placedTraps, 20); this.predictionMarkers.forEach((m) => m.destroy()); this.predictionMarkers = predicted.positions.map((p) => this.add.circle(this.boardOffset.x + p.x * this.boardTileSize + this.boardTileSize / 2, this.boardOffset.y + p.y * this.boardTileSize + this.boardTileSize / 2, 4, 0x99ff99, 0.6)); this.predictionText.setText(predicted.summary); this.state = { ...this.state, logs: [...this.state.logs, createLog('prediction_updated', this.state.turn)] }; }
+  private stepSimulation(stage: StageDefinition): void { if (this.state.status !== 'playing' || this.state.phase !== 'running') return; if (this.state.hero.skipTurns > 0) { this.state = { ...this.state, turn: this.state.turn + 1, hero: { ...this.state.hero, skipTurns: this.state.hero.skipTurns - 1 }, logs: [...this.state.logs, createLog('hero_slowed', this.state.turn + 1, { heroName: this.state.hero.name })] }; this.updateUi(stage); return; } const decision = decideHeroAction(this.state.hero, stage.tiles, stage.goalPosition, this.state.placedTraps, stage.chests); const steppedTrap = this.state.placedTraps.find((trap) => trap.x === decision.nextPosition.x && trap.y === decision.nextPosition.y); const effect = applyTrapEffect(steppedTrap, this.state.turn + 1, this.state.hero.name); const seenTraps = steppedTrap && !this.state.hero.memory.seenTraps.some((p) => p.x === steppedTrap.x && p.y === steppedTrap.y) ? [...this.state.hero.memory.seenTraps, { x: steppedTrap.x, y: steppedTrap.y }] : this.state.hero.memory.seenTraps; const previousPosition = { ...this.state.hero.position }; const nextPosition = effect.reverseStep ? previousPosition : decision.nextPosition; let nextState: GameSimulationState = { ...this.state, turn: this.state.turn + 1, hero: { ...this.state.hero, position: nextPosition, hp: this.state.hero.hp + effect.hpDelta, skipTurns: effect.skipTurns, memory: { ...this.state.hero.memory, seenTraps, lastPosition: previousPosition } }, logs: [...this.state.logs, createLog('hero_reason', this.state.turn + 1, { reason: decision.reason }), ...effect.logs] }; const judgedStatus = judgeStageStatus(nextState, stage.goalPosition); nextState = { ...nextState, status: judgedStatus, phase: judgedStatus === 'playing' ? 'running' : (judgedStatus as GamePhase) }; this.state = nextState; updateHeroSpritePosition(this.heroSprite, nextState.hero.position, this.boardTileSize, this.boardOffset); this.updateUi(stage); if (judgedStatus !== 'playing') this.finishStage(judgedStatus); }
+  private finishStage(status: 'cleared' | 'failed'): void { if (status === 'cleared') { this.latestRank = evaluateStageRank({ usedCost: this.state.usedTrapCost, trapCount: this.state.placedTraps.length, turnCount: this.state.turn, remainingHp: Math.max(0, this.state.hero.hp), maxHp: this.state.hero.maxHp }); this.state = { ...this.state, logs: [...this.state.logs, createLog('rank_shown', this.state.turn, { rank: this.latestRank })] }; } if (status === 'failed') { const ending = resolveEnding(false, this.totalTrapCost + this.state.usedTrapCost); this.scene.start(SCENES.gameOver, { win: false, text: ending.text, stageIndex: this.stageIndex }); return; } const nextIndex = this.stageIndex + 1; const totalUsedCost = this.totalTrapCost + this.state.usedTrapCost; if (nextIndex >= getStageCount()) { const ending = resolveEnding(true, totalUsedCost); this.scene.start(SCENES.gameOver, { win: true, text: `${ending.text}\nRANK:${this.latestRank ?? 'B'}`, stageIndex: this.stageIndex }); return; } this.scene.start(SCENES.stageSelect, { index: nextIndex, totalTrapCost: totalUsedCost, clearedStages: this.clearedStages + 1 }); }
+  private updateTrapButtonState(): void { (['spike', 'slime', 'decoy', 'arrow', 'fear', 'pitfall'] as TrapType[]).forEach((trap) => { const button = this.trapButtons[trap]; if (!button) return; button.setBackgroundColor(trap === this.selectedTrap ? '#5b7cff' : '#3a4050'); button.setAlpha(this.state.phase === 'planning' ? 1 : 0.6); }); }
   private updateUi(stage: StageDefinition): void { this.hpText.setText(`${this.state.hero.hp}/${this.state.hero.maxHp}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${stage.trapLimit}`); this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING / 選択中:${TRAPS[this.selectedTrap].name}` : 'PHASE: RUNNING'); this.logsText.setText(this.state.logs.slice(-8).map((log) => `[${log.turn}] ${log.text}`).join('\n')); this.updateTrapButtonState(); }
-
-  private openTutorial(): void {
-    if (!this.tutorialMode && this.state.phase !== 'planning') return;
-    this.tutorialStepIndex = 0;
-    this.showTutorialStep();
-  }
-
-  private showTutorialStep(): void {
-    this.destroyTutorialOverlay();
-    this.tutorialOverlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7).setOrigin(0).setDepth(2000);
-    const body = GameScene.TUTORIAL_STEPS[this.tutorialStepIndex] ?? 'チュートリアルは完了しました。';
-    this.tutorialText = this.add.text(120, 200, `${body}\n\nクリック / タップで次へ`, { fontSize: '28px', color: '#ffffff', wordWrap: { width: GAME_WIDTH - 240 } }).setDepth(2001);
-    this.tutorialOverlay.setInteractive({ useHandCursor: true });
-    this.tutorialOverlay.on('pointerdown', () => {
-      this.tutorialStepIndex += 1;
-      if (this.tutorialStepIndex >= GameScene.TUTORIAL_STEPS.length) {
-        this.destroyTutorialOverlay();
-        return;
-      }
-      this.showTutorialStep();
-    });
-  }
-
-  private destroyTutorialOverlay(): void {
-    this.tutorialOverlay?.destroy();
-    this.tutorialText?.destroy();
-    this.tutorialOverlay = null;
-    this.tutorialText = null;
-  }
+  private openTutorial(): void { if (!this.tutorialMode && this.state.phase !== 'planning') return; this.tutorialStepIndex = 0; this.showTutorialStep(); }
+  private showTutorialStep(): void { this.destroyTutorialOverlay(); this.tutorialOverlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7).setOrigin(0).setDepth(2000); const body = GameScene.TUTORIAL_STEPS[this.tutorialStepIndex] ?? 'チュートリアルは完了しました。'; this.tutorialText = this.add.text(120, 200, `${body}\n\nクリック / タップで次へ`, { fontSize: '28px', color: '#ffffff', wordWrap: { width: GAME_WIDTH - 240 } }).setDepth(2001); this.tutorialOverlay.setInteractive({ useHandCursor: true }); this.tutorialOverlay.on('pointerdown', () => { this.tutorialStepIndex += 1; if (this.tutorialStepIndex >= GameScene.TUTORIAL_STEPS.length) { this.destroyTutorialOverlay(); return; } this.showTutorialStep(); }); }
+  private destroyTutorialOverlay(): void { this.tutorialOverlay?.destroy(); this.tutorialText?.destroy(); this.tutorialOverlay = null; this.tutorialText = null; }
 }

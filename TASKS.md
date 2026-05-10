@@ -92,3 +92,10 @@
 - [x] 最短経路の次マスを優先する補正を追加し、ゴール無視の挙動を抑制
 
 - [x] 強化フェーズ: 罠3種追加・8ステージ化・AI拡張・Vitest導入・CI強化・README更新
+
+## Phase 15: Refactor / Structure Cleanup
+- [x] GameScene の責務を段階的に分割（state/layout/board/hero）
+- [x] TextButton を共通化し StageSelect / GameScene で利用
+- [x] stageRepository / stageLoader の型と検証を強化
+- [x] coreロジックの単体テストを拡充
+- [x] README に構成と検証コマンドを追記
