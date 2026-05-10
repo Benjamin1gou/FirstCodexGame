@@ -2,52 +2,36 @@ import { Scene } from 'phaser';
 import { SCENES } from '../config/gameConfig';
 import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
+import { GB_COLORS, GB_UI } from '../ui/gbTheme';
+import { createTextButton } from '../ui/TextButton';
 
 export class TitleScene extends Scene {
-  constructor() {
-    super(SCENES.title);
-  }
+  constructor() { super(SCENES.title); }
 
   create(): void {
     AudioManager.bindGlobalUnlock(this);
     createMuteButton(this);
     void AudioManager.playTitleBgm().catch(() => undefined);
-    this.add.text(120, 120, '勇者誘導ダンジョン', { fontSize: '52px', color: '#fff' });
-    this.add.text(140, 220, '通常: クリック / タップで開始', { fontSize: '28px', color: '#ffeb3b' });
-    this.add.text(140, 258, 'チュートリアル: Hキー / 下のボタン', { fontSize: '24px', color: '#b8ffb0' });
-    // スマホ利用者向けに横画面推奨を表示する。
-    this.add.text(140, 300, 'スマホでは横画面がおすすめです', { fontSize: '22px', color: '#b0d8ff' });
 
-    this.createTextButton(140, 360, '通常プレイ', () => {
-      void AudioManager.unlock().catch(() => undefined);
-      void AudioManager.playTitleBgm().catch(() => undefined);
-      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: false });
-    });
-    this.createTextButton(340, 360, 'チュートリアル', () => {
-      void AudioManager.unlock().catch(() => undefined);
-      void AudioManager.playTitleBgm().catch(() => undefined);
-      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: true });
-    });
+    this.add.rectangle(180, 320, 340, 600, Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color).setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color);
+    this.add.text(180, 150, '勇者誘導\nDUNGEON\nGB STYLE', { fontSize: '34px', align: 'center', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest }).setOrigin(0.5);
+    this.add.text(180, 280, 'TAP START', { fontSize: '24px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark }).setOrigin(0.5);
 
-    this.input.keyboard?.on('keydown-H', () => {
+    let started = false;
+    const start = (tutorialMode: boolean) => {
+      if (started) return;
+      started = true;
       void AudioManager.unlock().catch(() => undefined);
-      void AudioManager.playTitleBgm().catch(() => undefined);
-      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: true });
-    });
-    this.input.once('pointerdown', () => {
-      void AudioManager.unlock().catch(() => undefined);
-      void AudioManager.playTitleBgm().catch(() => undefined);
-      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: false });
-    });
-  }
+      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode });
+    };
 
-  private createTextButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Text {
-    const button = this.add.text(x, y, label, { fontSize: '24px', color: '#ffffff', backgroundColor: '#3a4050', padding: { x: 14, y: 8 } });
-    button.setInteractive({ useHandCursor: true });
-    button.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    createTextButton(this, { x: 180, y: 360, width: 220, height: 44, label: '通常プレイ', onClick: () => start(false) });
+    createTextButton(this, { x: 180, y: 414, width: 220, height: 44, label: 'チュートリアル', onClick: () => start(true) });
+
+    this.input.keyboard?.on('keydown-H', () => start(true));
+    this.input.once('pointerdown', (pointer: Phaser.Input.Pointer) => {
       pointer.event.stopPropagation();
-      onClick();
+      start(false);
     });
-    return button;
   }
 }

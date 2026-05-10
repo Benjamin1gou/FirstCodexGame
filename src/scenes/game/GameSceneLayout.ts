@@ -2,13 +2,14 @@ import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE } from '../../config/gameConfig';
 import type { StageDefinition } from '../../core/stage/stageTypes';
 
 export const GAME_SCENE_LAYOUT = {
-  topPanelHeight: 136,
-  bottomPanelHeight: 188,
-  sideMargin: 16,
-  boardTopPadding: 12,
-  boardBottomPadding: 12,
-  buttonColumnX: 700,
-  actionButtonX: 840
+  screenPadding: 10,
+  topPanelHeight: 84,
+  boardTopPadding: 8,
+  boardBottomPadding: 8,
+  trapInfoHeight: 48,
+  bottomPanelHeight: 230,
+  trapToolbarTop: 430,
+  actionButtonTop: 560
 } as const;
 
 export type BoardLayout = {
@@ -17,16 +18,17 @@ export type BoardLayout = {
 };
 
 export const computeBoardLayout = (stage: StageDefinition): BoardLayout => {
-  const availableWidth = GAME_WIDTH - GAME_SCENE_LAYOUT.sideMargin * 2;
+  const availableWidth = GAME_WIDTH - GAME_SCENE_LAYOUT.screenPadding * 2;
   const availableHeight =
     GAME_HEIGHT -
     GAME_SCENE_LAYOUT.topPanelHeight -
+    GAME_SCENE_LAYOUT.trapInfoHeight -
     GAME_SCENE_LAYOUT.bottomPanelHeight -
     GAME_SCENE_LAYOUT.boardTopPadding -
     GAME_SCENE_LAYOUT.boardBottomPadding;
   const maxTileByWidth = Math.floor(availableWidth / stage.width);
   const maxTileByHeight = Math.floor(availableHeight / stage.height);
-  const tileSize = Math.max(32, Math.min(TILE_SIZE, maxTileByWidth, maxTileByHeight));
+  const tileSize = Math.max(24, Math.min(TILE_SIZE, maxTileByWidth, maxTileByHeight));
   const boardPixelWidth = tileSize * stage.width;
   const boardPixelHeight = tileSize * stage.height;
 

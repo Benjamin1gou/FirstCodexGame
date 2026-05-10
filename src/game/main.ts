@@ -12,8 +12,8 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  backgroundColor: '#202530',
-  // スマホ画面でも960x640のゲーム領域を保ったまま縮小表示する。
+  backgroundColor: '#0f380f',
+  // スマホ縦画面を基準に、表示領域へフィットさせる。
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
