@@ -16,7 +16,8 @@ const phasermsg = () => {
 };
 
 export default defineConfig({
-  base: '/FirstCodexGame/',
+  // 相対baseにして、GitHub Pagesのプロジェクト配下/カスタムドメイン直下の両方で動作させる。
+  base: './',
   logLevel: 'warning',
   build: {
     rollupOptions: {
