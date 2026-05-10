@@ -132,3 +132,6 @@
 - [x] PreloadのSVG読込APIを互換性の高い`load.image`へ統一し、Loading assetsで停止する事象を解消
 - [x] GitHub Pages配信時のBASE_URLを考慮したアセットパス解決を追加
 - [x] `vite build`の`base`を相対パス(`./`)へ変更し、`https://<user>.github.io/`直下配信でもアセット404で停止しないよう修正
+
+## Phase 21: Preload Base URL Hardening
+- [x] BASE_URL 未定義時に `/` へフォールバックし、初期ロード停止を防止
