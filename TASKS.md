@@ -90,3 +90,5 @@
 
 ## Phase 14: Hero Goal Pursuit Fix
 - [x] 最短経路の次マスを優先する補正を追加し、ゴール無視の挙動を抑制
+
+- [x] 強化フェーズ: 罠3種追加・8ステージ化・AI拡張・Vitest導入・CI強化・README更新

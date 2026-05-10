@@ -28,7 +28,7 @@ export class GameScene extends Scene {
 
   private state!: GameSimulationState; private stageIndex = 0; private totalTrapCost = 0; private clearedStages = 0; private selectedTrap: TrapType = 'spike';
   private heroSprite!: Phaser.GameObjects.Image; private logsText!: Phaser.GameObjects.Text; private hpText!: Phaser.GameObjects.Text; private modeText!: Phaser.GameObjects.Text; private infoText!: Phaser.GameObjects.Text; private predictionText!: Phaser.GameObjects.Text; private narrativeText!: Phaser.GameObjects.Text;
-  private trapButtons: Record<TrapType, Phaser.GameObjects.Text> = { spike: null as unknown as Phaser.GameObjects.Text, slime: null as unknown as Phaser.GameObjects.Text, decoy: null as unknown as Phaser.GameObjects.Text };
+  private trapButtons: Record<TrapType, Phaser.GameObjects.Text> = { spike: null as unknown as Phaser.GameObjects.Text, slime: null as unknown as Phaser.GameObjects.Text, decoy: null as unknown as Phaser.GameObjects.Text, arrow: null as unknown as Phaser.GameObjects.Text, fear: null as unknown as Phaser.GameObjects.Text, pitfall: null as unknown as Phaser.GameObjects.Text };
   private trapSprites: Phaser.GameObjects.GameObject[] = []; private predictionMarkers: Phaser.GameObjects.GameObject[] = []; private placementHistory: PlacedTrap[] = []; private latestRank: StageRank | null = null;
   private boardTileSize = TILE_SIZE;
   private boardOffset = { x: 20, y: 140 };
@@ -85,7 +85,7 @@ export class GameScene extends Scene {
     const narrative = getOpeningDialogue(stage.id);
     this.add.image(16, 8, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GameScene.LAYOUT.topPanelHeight - 12); this.add.image(16, GAME_HEIGHT - GameScene.LAYOUT.bottomPanelHeight, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GameScene.LAYOUT.bottomPanelHeight - 16);
     this.add.text(30, 16, `${stage.chapterTitle} ${stage.name}`, { fontSize: '24px' }); this.add.text(30, 48, `${heroName} HP`, { fontSize: '20px' }); this.hpText = this.add.text(160, 48, '', { fontSize: '20px' }); this.modeText = this.add.text(30, 74, '', { fontSize: '16px' });
-    this.infoText = this.add.text(30, 96, '罠カード: [1]トゲ [2]スライム [3]デコイ / Backspace:1手戻し', { fontSize: '16px' }); this.predictionText = this.add.text(30, 118, '', { fontSize: '16px' });
+    this.infoText = this.add.text(30, 96, '罠: [1]トゲ [2]スライム [3]デコイ [4]矢雨 [5]恐怖 [6]落とし穴 / Backspace:1手戻し', { fontSize: '16px' }); this.predictionText = this.add.text(30, 118, '', { fontSize: '16px' });
     const buttonColumnX = 700;
     const narrativeWidth = Math.max(200, buttonColumnX - 48);
     this.narrativeText = this.add.text(30, 140, narrative.openingNarration, { fontSize: '15px', wordWrap: { width: narrativeWidth } }); this.logsText = this.add.text(30, GAME_HEIGHT - GameScene.LAYOUT.bottomPanelHeight + 14, '', { fontSize: '14px', wordWrap: { width: 620 } });
@@ -94,6 +94,9 @@ export class GameScene extends Scene {
     this.trapButtons.spike = this.createTextButton(buttonColumnX, 30, 'トゲ罠', () => this.selectTrap('spike'));
     this.trapButtons.slime = this.createTextButton(buttonColumnX, 80, 'スライム罠', () => this.selectTrap('slime'));
     this.trapButtons.decoy = this.createTextButton(buttonColumnX, 130, 'デコイ罠', () => this.selectTrap('decoy'));
+    this.trapButtons.arrow = this.createTextButton(buttonColumnX, 180, '矢雨罠', () => this.selectTrap('arrow'));
+    this.trapButtons.fear = this.createTextButton(buttonColumnX, 230, '恐怖罠', () => this.selectTrap('fear'));
+    this.trapButtons.pitfall = this.createTextButton(buttonColumnX, 280, '落とし穴', () => this.selectTrap('pitfall'));
     this.createTextButton(840, 30, '実行', () => {
       void AudioManager.unlock().catch(() => undefined);
       this.startRunning();
@@ -102,6 +105,7 @@ export class GameScene extends Scene {
     this.createTextButton(840, 130, 'リスタート', () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages }));
 
     this.input.keyboard?.on('keydown-ONE', () => this.selectTrap('spike')); this.input.keyboard?.on('keydown-TWO', () => this.selectTrap('slime')); this.input.keyboard?.on('keydown-THREE', () => this.selectTrap('decoy'));
+    this.input.keyboard?.on('keydown-FOUR', () => this.selectTrap('arrow')); this.input.keyboard?.on('keydown-FIVE', () => this.selectTrap('fear')); this.input.keyboard?.on('keydown-SIX', () => this.selectTrap('pitfall'));
   }
   private selectTrap(trap: TrapType): void { if (this.state.phase !== 'planning') return; this.selectedTrap = trap; this.state = { ...this.state, logs: [...this.state.logs, createLog('trap_selected', this.state.turn, { trapName: TRAPS[trap].name })] }; this.updateUi(loadStageByIndex(this.stageIndex)); }
   private handleTrapPlacement(pointer: Phaser.Input.Pointer, stage: StageDefinition): void {
@@ -128,9 +132,10 @@ export class GameScene extends Scene {
     const effect = applyTrapEffect(steppedTrap, this.state.turn + 1, this.state.hero.name);
     const seenTraps = steppedTrap && !this.state.hero.memory.seenTraps.some((p) => p.x === steppedTrap.x && p.y === steppedTrap.y) ? [...this.state.hero.memory.seenTraps, { x: steppedTrap.x, y: steppedTrap.y }] : this.state.hero.memory.seenTraps;
     const previousPosition = { ...this.state.hero.position };
-    let nextState: GameSimulationState = { ...this.state, turn: this.state.turn + 1, hero: { ...this.state.hero, position: decision.nextPosition as GridPosition, hp: this.state.hero.hp + effect.hpDelta, skipTurns: effect.skipTurns, memory: { ...this.state.hero.memory, seenTraps, lastPosition: previousPosition } }, logs: [...this.state.logs, createLog('hero_reason', this.state.turn + 1, { reason: decision.reason }), ...effect.logs] };
+    const nextPosition = effect.reverseStep ? previousPosition : decision.nextPosition;
+    let nextState: GameSimulationState = { ...this.state, turn: this.state.turn + 1, hero: { ...this.state.hero, position: nextPosition as GridPosition, hp: this.state.hero.hp + effect.hpDelta, skipTurns: effect.skipTurns, memory: { ...this.state.hero.memory, seenTraps, lastPosition: previousPosition } }, logs: [...this.state.logs, createLog('hero_reason', this.state.turn + 1, { reason: decision.reason }), ...effect.logs] };
     const judgedStatus = judgeStageStatus(nextState, stage.goalPosition); nextState = { ...nextState, status: judgedStatus, phase: judgedStatus === 'playing' ? 'running' : (judgedStatus as GamePhase) };
-    this.state = nextState; this.heroSprite.setPosition(this.boardOffset.x + decision.nextPosition.x * this.boardTileSize + this.boardTileSize / 2, this.boardOffset.y + decision.nextPosition.y * this.boardTileSize + this.boardTileSize / 2); this.updateUi(stage);
+    this.state = nextState; this.heroSprite.setPosition(this.boardOffset.x + nextState.hero.position.x * this.boardTileSize + this.boardTileSize / 2, this.boardOffset.y + nextState.hero.position.y * this.boardTileSize + this.boardTileSize / 2); this.updateUi(stage);
     if (judgedStatus !== 'playing') this.finishStage(judgedStatus);
   }
   private finishStage(status: 'cleared' | 'failed'): void { if (status === 'cleared') { this.latestRank = evaluateStageRank({ usedCost: this.state.usedTrapCost, trapCount: this.state.placedTraps.length, turnCount: this.state.turn, remainingHp: Math.max(0, this.state.hero.hp), maxHp: this.state.hero.maxHp }); this.state = { ...this.state, logs: [...this.state.logs, createLog('rank_shown', this.state.turn, { rank: this.latestRank })] }; }
@@ -149,7 +154,7 @@ export class GameScene extends Scene {
 
   // 選択中の罠を色で表示し、スマホ操作でも現在状態を分かりやすくする。
   private updateTrapButtonState(): void {
-    const trapEntries: TrapType[] = ['spike', 'slime', 'decoy'];
+    const trapEntries: TrapType[] = ['spike', 'slime', 'decoy', 'arrow', 'fear', 'pitfall'];
     trapEntries.forEach((trap) => {
       const button = this.trapButtons[trap];
       if (!button) return;
