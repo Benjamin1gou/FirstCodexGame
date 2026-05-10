@@ -1,13 +1,21 @@
-import { canPlaceTrap } from '../../core/rules/placementRules';
+import { canPlaceTrap, getPlacementBlockReason, type PlacementBlockReason } from '../../core/rules/placementRules';
 import type { GameSimulationState } from '../../core/simulation/simulationTypes';
 import type { GridPosition, StageDefinition, TrapType } from '../../core/stage/stageTypes';
 import { TRAPS } from '../../config/gameConfig';
 
-const PLACEABLE_COLOR = 0x63d182;
-const BLOCKED_COLOR = 0xf07b7b;
+const PLACEABLE_COLOR = 0x77d78b;
+const BLOCKED_COLOR = 0x8892a0;
 const RANGE_COLOR = 0x7cc4ff;
-const CELL_ALPHA = 0.2;
+const REASON_COLORS: Partial<Record<PlacementBlockReason, number>> = {
+  wall: 0x6f7784,
+  start: 0x5b91ff,
+  goal: 0xf4be4a,
+  hero: 0xb07de0,
+  occupied: 0xd98989
+};
+const CELL_ALPHA = 0.18;
 const RANGE_ALPHA = 0.18;
+const REASON_ALPHA = 0.14;
 const RANGE_BY_TRAP: Partial<Record<TrapType, number>> = { arrow: 1, decoy: 2 };
 
 const toKey = (x: number, y: number): string => `${x},${y}`;
@@ -56,8 +64,19 @@ export const renderPlacementOverlay = (
         TRAPS[selectedTrap].cost
       );
 
-      const color = result.ok ? PLACEABLE_COLOR : BLOCKED_COLOR;
-      const alpha = result.ok ? CELL_ALPHA : 0.1;
+      const blockReason = getPlacementBlockReason(
+        state.phase,
+        stage,
+        { x, y },
+        state.hero.position,
+        state.placedTraps,
+        state.placedTraps.length,
+        state.usedTrapCost,
+        TRAPS[selectedTrap].cost
+      );
+      const reasonColor = blockReason ? (REASON_COLORS[blockReason] ?? null) : null;
+      const color = result.ok ? PLACEABLE_COLOR : (reasonColor ?? BLOCKED_COLOR);
+      const alpha = result.ok ? CELL_ALPHA : (reasonColor ? REASON_ALPHA : 0.08);
       const rect = scene.add.rectangle(
         boardOffset.x + x * tileSize + tileSize / 2,
         boardOffset.y + y * tileSize + tileSize / 2,
@@ -90,3 +109,4 @@ export const renderPlacementOverlay = (
 export const destroyPlacementOverlay = (objects: Phaser.GameObjects.GameObject[]): void => {
   objects.forEach((obj) => obj.destroy());
 };
+

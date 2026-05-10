@@ -107,3 +107,8 @@
 - [x] 罠ごとの簡易範囲（arrow/decoy）を追加
 - [x] ルール/オーバーレイのVitestを追加
 - [x] READMEへ仕様追記
+
+## Phase 17: Placement UX Stabilization
+- [x] costLimit/配置ハイライト安定化テストを追加（placementRules/getEffectiveCostLimit/buildTrapRangeCells）
+- [x] 配置不可ハイライトの視認性を調整（理由別の抑制色 + 予測ルートとの分離）
+- [x] 選択中罠の説明UI（名称/Cost/効果）を追加

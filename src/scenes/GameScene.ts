@@ -18,6 +18,7 @@ import { createLog } from '../systems/LogSystem';
 import { createTextButton } from '../ui/TextButton';
 import { renderBoardTiles, renderTrapTile } from './game/BoardRenderer';
 import { computeBoardLayout, GAME_SCENE_LAYOUT } from './game/GameSceneLayout';
+import { formatTrapInfoText } from './game/TrapInfoText';
 import { createInitialSimulationState } from './game/GameSceneStateFactory';
 import { createHeroSprite, updateHeroSpritePosition } from './game/HeroRenderer';
 import { destroyGameObjects, renderPredictionMarkers } from './game/PredictionRenderer';
@@ -38,6 +39,7 @@ export class GameScene extends Scene {
   private hpText!: Phaser.GameObjects.Text;
   private modeText!: Phaser.GameObjects.Text;
   private predictionText!: Phaser.GameObjects.Text;
+  private trapInfoText!: Phaser.GameObjects.Text;
   private trapButtons = {} as Record<TrapType, Phaser.GameObjects.Text>;
   private trapSprites: Phaser.GameObjects.GameObject[] = [];
   private predictionMarkers: Phaser.GameObjects.GameObject[] = [];
@@ -109,7 +111,8 @@ export class GameScene extends Scene {
     this.modeText = this.add.text(30, 74, '', { fontSize: '16px' });
     this.add.text(30, 96, '罠: [1]トゲ [2]スライム [3]デコイ [4]矢雨 [5]恐怖 [6]落とし穴 / Backspace:1手戻し', { fontSize: '16px' });
     this.predictionText = this.add.text(30, 118, '', { fontSize: '16px' });
-    this.add.text(30, 140, opening.openingNarration, { fontSize: '15px', wordWrap: { width: Math.max(200, GAME_SCENE_LAYOUT.buttonColumnX - 48) } });
+    this.trapInfoText = this.add.text(30, 140, '', { fontSize: '15px' });
+    this.add.text(30, 162, opening.openingNarration, { fontSize: '15px', wordWrap: { width: Math.max(200, GAME_SCENE_LAYOUT.buttonColumnX - 48) } });
     this.logsText = this.add.text(30, GAME_HEIGHT - GAME_SCENE_LAYOUT.bottomPanelHeight + 14, '', { fontSize: '14px', wordWrap: { width: 620 } });
 
     this.trapButtons = createTrapToolbar(this, GAME_SCENE_LAYOUT.buttonColumnX, (trap) => this.selectTrap(trap));
@@ -272,7 +275,8 @@ export class GameScene extends Scene {
   private updateUi(stage: StageDefinition): void {
     const effectiveCostLimit = getEffectiveCostLimit(stage);
     this.hpText.setText(`${this.state.hero.hp}/${this.state.hero.maxHp}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${effectiveCostLimit}`);
-    this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING / 選択中:${TRAPS[this.selectedTrap].name}` : 'PHASE: RUNNING');
+    this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING` : 'PHASE: RUNNING');
+    this.trapInfoText.setText(formatTrapInfoText(this.selectedTrap));
     this.logsText.setText(this.state.logs.slice(-8).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
     updateTrapToolbarState(this.trapButtons, this.selectedTrap, this.state.phase === 'planning');
   }

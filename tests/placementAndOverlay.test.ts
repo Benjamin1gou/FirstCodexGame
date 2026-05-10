@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { canPlaceTrap } from '../src/core/rules/placementRules';
+import { canPlaceTrap, getEffectiveCostLimit, getPlacementBlockReason } from '../src/core/rules/placementRules';
 import { buildTrapRangeCells } from '../src/scenes/game/TrapPlacementOverlayRenderer';
-import type { StageDefinition } from '../src/core/stage/stageTypes';
+import type { StageDefinition, TrapType } from '../src/core/stage/stageTypes';
 
 const stage: StageDefinition = {
   id: 'test-stage',
@@ -27,32 +27,72 @@ const stage: StageDefinition = {
   narrativeId: 'n'
 };
 
-describe('placementRules detailed checks', () => {
-  it('rejects wall/start/goal/hero/existing trap', () => {
+describe('placementRules', () => {
+  it('getEffectiveCostLimit は costLimit 指定時にそれを返す', () => {
+    expect(getEffectiveCostLimit({ ...stage, costLimit: 7 })).toBe(7);
+  });
+
+  it('getEffectiveCostLimit は costLimit 未指定時に trapLimit を返す', () => {
+    expect(getEffectiveCostLimit(stage)).toBe(stage.trapLimit);
+  });
+
+  it('壁には置けない', () => {
     expect(canPlaceTrap('planning', stage, { x: 2, y: 0 }, { x: 1, y: 1 }, [], 0, 0, 1).ok).toBe(false);
+  });
+
+  it('スタートには置けない', () => {
     expect(canPlaceTrap('planning', stage, { x: 0, y: 0 }, { x: 1, y: 1 }, [], 0, 0, 1).ok).toBe(false);
+  });
+
+  it('ゴールには置けない', () => {
     expect(canPlaceTrap('planning', stage, { x: 4, y: 4 }, { x: 1, y: 1 }, [], 0, 0, 1).ok).toBe(false);
+  });
+
+  it('勇者位置には置けない', () => {
     expect(canPlaceTrap('planning', stage, { x: 1, y: 1 }, { x: 1, y: 1 }, [], 0, 0, 1).ok).toBe(false);
+  });
+
+  it('既存罠位置には置けない', () => {
     expect(canPlaceTrap('planning', stage, { x: 1, y: 2 }, { x: 1, y: 1 }, [{ x: 1, y: 2 }], 1, 1, 1).ok).toBe(false);
   });
 
-  it('rejects trapLimit and costLimit overflow', () => {
+  it('trapLimit を超えると置けない', () => {
     expect(canPlaceTrap('planning', stage, { x: 2, y: 2 }, { x: 1, y: 1 }, [], 2, 0, 1).ok).toBe(false);
-    const withCostLimit: StageDefinition = { ...stage, costLimit: 3, trapLimit: 5 };
-    expect(canPlaceTrap('planning', withCostLimit, { x: 2, y: 2 }, { x: 1, y: 1 }, [], 2, 2, 2).ok).toBe(false);
   });
 
-  it('uses trapLimit as cost limit when costLimit is undefined', () => {
-    expect(canPlaceTrap('planning', stage, { x: 2, y: 2 }, { x: 1, y: 1 }, [], 1, 2, 1).ok).toBe(false);
+  it('costLimit を超えると置けない', () => {
+    const withCostLimit: StageDefinition = { ...stage, costLimit: 3, trapLimit: 5 };
+    expect(canPlaceTrap('planning', withCostLimit, { x: 2, y: 2 }, { x: 1, y: 1 }, [], 0, 2, 2).ok).toBe(false);
+  });
+
+
+  it('配置不可理由コードを返す', () => {
+    const reason = getPlacementBlockReason('planning', stage, { x: 2, y: 0 }, { x: 1, y: 1 }, [], 0, 0, 1);
+    expect(reason).toBe('wall');
+  });
+
+  it('costLimit 未指定時は trapLimit を使う', () => {
+    expect(canPlaceTrap('planning', stage, { x: 2, y: 2 }, { x: 1, y: 1 }, [], 0, 2, 1).ok).toBe(false);
   });
 });
 
-describe('placement overlay helper ranges', () => {
-  it('arrow has 1-tile radius area', () => {
-    expect(buildTrapRangeCells(stage, { x: 2, y: 2 }, 'arrow')).toHaveLength(9);
+describe('buildTrapRangeCells', () => {
+  const center = { x: 2, y: 2 };
+
+  it.each<TrapType>(['spike', 'slime', 'pitfall', 'fear'])('%s は中心マスのみ', (trap) => {
+    expect(buildTrapRangeCells(stage, center, trap)).toEqual([center]);
   });
 
-  it('decoy has 2-tile radius area', () => {
-    expect(buildTrapRangeCells(stage, { x: 2, y: 2 }, 'decoy')).toHaveLength(25);
+  it('arrow は周囲1マス', () => {
+    expect(buildTrapRangeCells(stage, center, 'arrow')).toHaveLength(9);
+  });
+
+  it('decoy は周囲2マス', () => {
+    expect(buildTrapRangeCells(stage, center, 'decoy')).toHaveLength(25);
+  });
+
+  it('盤面外のセルは含めない', () => {
+    const cells = buildTrapRangeCells(stage, { x: 0, y: 0 }, 'decoy');
+    expect(cells.every((cell) => cell.x >= 0 && cell.y >= 0 && cell.x < stage.width && cell.y < stage.height)).toBe(true);
   });
 });

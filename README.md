@@ -37,13 +37,16 @@ FirstCodexGame は **TypeScript + Phaser + Vite** で作られた、静的配信
 ## スコア・ランク
 ランクは `S/A/B/C`。使用コスト・罠数・ターン数・残HPを元に評価します。
 
+## 罠説明UI
+- planningフェーズ中は、選択中の罠の**名称 / Cost / 効果説明**を上部に表示します。
+- スマホ操作時でも現在選択中の罠が分かりやすく、誤タップ時の判断がしやすくなります。
 
 ## 配置制限とハイライト
 - `trapLimit`: 配置できる**罠の個数上限**です。
 - `costLimit`（任意）: 使える**総コスト上限**です。未指定時は `trapLimit` をコスト上限として扱い、従来挙動を維持します。
 - planningフェーズ中は、選択中の罠に対して盤面に配置補助を表示します。
   - 配置可能マス: 薄い緑
-  - 配置不可マス: 薄い赤
+  - 配置不可マス: 目立ちすぎない抑えめカラー（壁/スタート/ゴール/勇者/既存罠は理由別の色味）
   - `arrow`: 周囲1マスの簡易範囲表示
   - `decoy`: 周囲2マスの簡易範囲表示
 - running開始時はハイライトを消し、次のplanningで再描画されます。
@@ -70,6 +73,9 @@ npm run scan:secrets
 ```bash
 npm run test
 ```
+- `placementRules` の個別ケース（壁/スタート/ゴール/勇者/既存罠/trapLimit/costLimit）を追加。
+- `getEffectiveCostLimit` の分岐テストを追加。
+- `buildTrapRangeCells` の範囲/盤面外除外テストを追加。
 
 ## ビルド
 ```bash
