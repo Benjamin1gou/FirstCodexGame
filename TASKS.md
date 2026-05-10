@@ -130,3 +130,4 @@
 
 ## Phase 20: Loading Assets Stall Fix
 - [x] PreloadのSVG読込APIを互換性の高い`load.image`へ統一し、Loading assetsで停止する事象を解消
+- [x] GitHub Pages配信時のBASE_URLを考慮したアセットパス解決を追加
