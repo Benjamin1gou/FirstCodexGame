@@ -127,3 +127,6 @@
 - [x] タイトル/ステージ選択/ゲームオーバーをGB風UIへ更新
 - [x] 罠カード2列×3行 + 下部操作ボタンへ移行
 - [x] README と CSS を縦画面GB風仕様に更新
+
+## Phase 20: Loading Assets Stall Fix
+- [x] PreloadのSVG読込APIを互換性の高い`load.image`へ統一し、Loading assetsで停止する事象を解消
