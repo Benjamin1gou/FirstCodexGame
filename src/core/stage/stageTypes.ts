@@ -2,14 +2,14 @@ export type TileType = 'floor' | 'wall' | 'start' | 'goal' | 'trap' | 'treasure'
 
 export type GridPosition = { x: number; y: number };
 
-export type TrapType = 'spike' | 'slime' | 'decoy';
+export type TrapType = 'spike' | 'slime' | 'decoy' | 'arrow' | 'fear' | 'pitfall';
 
 export type TrapDefinition = {
   id: TrapType;
   name: string;
   cost: number;
   damage: number;
-  effect: 'damage' | 'slow' | 'attract';
+  effect: 'damage' | 'slow' | 'attract' | 'ranged' | 'fear';
   description: string;
 };
 

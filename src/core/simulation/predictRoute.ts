@@ -16,7 +16,8 @@ export const predictRoute = (hero: HeroState, stage: StageDefinition, traps: Pla
     const effect = applyTrapEffect(steppedTrap, turn + 1, simHero.name);
     const seenTraps = steppedTrap ? [...simHero.memory.seenTraps, { x: steppedTrap.x, y: steppedTrap.y }] : simHero.memory.seenTraps;
     const previousPosition = { ...simHero.position };
-    simHero = { ...simHero, position: decision.nextPosition, hp: simHero.hp + effect.hpDelta, memory: { ...simHero.memory, seenTraps, lastPosition: previousPosition } };
+    const nextPos = effect.reverseStep ? previousPosition : decision.nextPosition;
+    simHero = { ...simHero, position: nextPos, hp: simHero.hp + effect.hpDelta, memory: { ...simHero.memory, seenTraps, lastPosition: previousPosition } };
     skipTurns = effect.skipTurns;
     positions.push({ ...simHero.position });
     if (simHero.hp <= 0 || (simHero.position.x === stage.goalPosition.x && simHero.position.y === stage.goalPosition.y)) break;

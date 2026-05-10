@@ -1,92 +1,58 @@
-# 勇者誘導ダンジョン（FirstCodexGame）
+# FirstCodexGame
 
-TypeScript + Phaser + Vite で作る、2D逆タワーディフェンス型パズルゲームMVPです。
+FirstCodexGame は **TypeScript + Phaser + Vite** で作られた、静的配信向けの2D逆タワーディフェンス型パズルです。  
+プレイヤーは魔王軍の参謀として、勇者に直接攻撃せず罠配置で誘導・撃退します。
 
-## ゲーム概要
-プレイヤーは魔王ヴァルムの参謀として、勇者を直接攻撃せず、罠配置で自動行動する勇者を誘導・撃退します。
+## 操作方法
+- 罠選択: キーボード `1-6` / 画面右の罠ボタン
+- 罠配置: 盤面タップ（盤面外タップは無効）
+- 実行: `Enter` / 実行ボタン
+- 1手戻し: `Backspace` / 1手戻しボタン
+- リスタート: `R` / リスタートボタン
+- チュートリアル: `H`
 
-## 技術構成
-- TypeScript
-- Phaser 4
-- Vite 6
-- GitHub Pages（静的配信）
+## スマホ操作
+- 右側の大きめボタンで罠選択・実行可能
+- 選択中の罠はハイライト表示
+- 盤面外タップの誤配置を防止
 
-## 起動方法
+## 罠一覧
+- `spike`: 高ダメージ
+- `slime`: 小ダメージ + 1ターン足止め
+- `decoy`: 好奇心誘導
+- `arrow`: 中ダメージ
+- `fear`: 1手戻しを誘発
+- `pitfall`: 小ダメージ + 1ターン足止め
+
+## 勇者一覧
+- アデル: 最短志向・低リスク回避
+- ミオ: 好奇心/宝箱志向が高い
+- セレナ: 高リスク回避・罠記憶が強い
+- ロイ: バランス型
+- ニア: 宝箱志向が非常に高い
+
+## ステージ構成
+全8ステージ。基本操作から新罠チュートリアル、総合演習まで段階的に構成しています。
+
+## スコア・ランク
+ランクは `S/A/B/C`。使用コスト・罠数・ターン数・残HPを元に評価します。
+
+## テスト
+```bash
+npm run test
+```
+
+## ビルド
 ```bash
 npm ci
-npm run dev
+npm run build-nolog
 ```
-
-## ビルド方法
-```bash
-npm run build
-```
-
-## ディレクトリ構成
-- `src/scenes`: 画面進行と描画
-- `src/core`: ルール/AI/ステージ/物語
-- `src/data`: ステージ・勇者・ナラティブ定義
-- `src/systems`: ログなど横断処理
-- `src/config`: ゲーム設定
-- `src/assets`: 画像キー・マニフェスト・preload処理
-- `public/assets`: 差し替え可能な画像素材
-
-## 画像アセット運用
-- アセットキー定義: `src/assets/assetKeys.ts`
-- 画像パス管理: `src/assets/assetManifest.ts`
-- 読み込み処理: `src/assets/preloadAssets.ts`
-- 推奨サイズ: タイル/勇者/罠は 56x56（表示時は `TILE_SIZE` に合わせて拡縮）
-
-### 新しい勇者画像を追加する手順
-1. `public/assets/characters/heroes/hero_<id>.svg` を追加
-2. `assetKeys.ts` にキーを追加
-3. `assetManifest.ts` に key/path を追加
-4. `GameScene` の heroId 対応表にマッピングを追加
-
-### 新しいタイル画像を追加する手順
-1. `public/assets/tiles/<tile>.svg` を追加
-2. `assetKeys.ts` にキーを追加
-3. `assetManifest.ts` に key/path を追加
-4. `gameSceneTypes.ts` の TileType 対応表にマッピングを追加
-
-## データ追加方法
-- ステージ: `src/data/stages/stage-xxx.ts` を追加し `stageRepository.ts` に登録
-- 勇者: `src/data/heroes/heroes.ts` に `HeroDefinition` を追加
-- 罠: `src/config/gameConfig.ts` の `TRAP`（将来は data 化推奨）
-- ストーリー: `src/data/narrative/story.ts` に `NarrativeDefinition` を追加
-
-## エンディング分岐
-`resolveEnding(allCleared, totalTrapCost)` で分岐。
-- 全クリア + 低コスト: 知略勝利
-- 全クリア + 高コスト: 力押し勝利
-- 途中失敗: 敗北
-
-## GitHub Pages公開手順
-1. `main` にpush
-2. Settings > Pages を GitHub Actions に設定
-3. `.github/workflows/deploy.yml` 完了を確認
 
 ## セキュリティ方針
-- secrets はコミットしない
-- 外部通信・バックエンドは追加しない
-- ライセンス不明素材は使わない
-- install script 付き依存は慎重に評価
+- APIキー・トークン・シークレットを追加しない
+- 外部API/バックエンドを追加しない
+- ライセンス不明素材を追加しない
+- `npm run scan:secrets` で定期確認する
 
-## 今後の拡張案
-- 宝箱/モンスターの本実装
-- 勇者性格別の経路選好
-- 罠コストUI改善
-- Vitest で core 層テスト追加
-
-## セキュア運用メモ
-- このプロジェクトは外部APIキー不要で起動できます。
-- ローカル秘密情報は `.env` に置き、`.env` はコミットしません。
-- 開発開始手順: `npm ci` → `npm run dev`
-- ビルド確認: `npm run build`
-
-
-## BGM（8bit風）
-- Web Audio API で音源ファイルなしの8bit風BGM（title / dungeon）と結果ジングル（win / lose）を生成します。
-- ブラウザの自動再生制限に対応するため、初回タップ/クリックまたはキー入力後に再生されます。
-- ミュートは `M` キーまたは画面右上の `BGM: ON/OFF` ボタンで切り替えできます（状態は localStorage に保存）。
-- 将来は `public/assets/audio/*.ogg|mp3|wav` に差し替え可能なように、音声制御を `src/systems/AudioManager.ts` に分離しています。
+## GitHub Pages 公開
+`.github/workflows/deploy.yml` で `npm ci → build → test → scan:secrets` を実行後、Pagesへデプロイします。
