@@ -29,6 +29,22 @@ import { destroyPlacementOverlay, renderPlacementOverlay } from './game/TrapPlac
 import { renderTrapSprites } from './game/TrapRenderer';
 
 type GameSceneData = { stageIndex: number; totalTrapCost: number; clearedStages: number; tutorialMode?: boolean };
+
+const UI_POSITIONS = {
+  centerX: GAME_WIDTH / 2,
+  topPanelY: 40,
+  infoPanelY: 390,
+  bottomPanelY: 530,
+  trapGridStartX: 100,
+  trapGridStartY: 486,
+  trapButtonWidth: 120,
+  trapButtonHeight: 36,
+  trapGapX: 20,
+  trapGapY: 10,
+  actionRow1Y: 580,
+  actionRow2Y: 620
+} as const;
+
 export class GameScene extends Scene {
   constructor() { super(SCENES.game); }
 
@@ -108,10 +124,9 @@ export class GameScene extends Scene {
     const opening = getOpeningDialogue(stage.id);
     const panelColor = Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color;
     const borderColor = Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color;
-    const topY = 6;
-    this.add.rectangle(180, topY + 34, 340, 68, panelColor).setStrokeStyle(2, borderColor);
-    this.add.rectangle(180, 398, 340, 44, panelColor).setStrokeStyle(2, borderColor);
-    this.add.rectangle(180, 530, 340, 214, panelColor).setStrokeStyle(2, borderColor);
+    this.add.rectangle(UI_POSITIONS.centerX, UI_POSITIONS.topPanelY, 340, 68, panelColor).setStrokeStyle(2, borderColor);
+    this.add.rectangle(UI_POSITIONS.centerX, UI_POSITIONS.infoPanelY, 340, 44, panelColor).setStrokeStyle(2, borderColor);
+    this.add.rectangle(UI_POSITIONS.centerX, UI_POSITIONS.bottomPanelY, 340, 214, panelColor).setStrokeStyle(2, borderColor);
 
     this.add.text(18, 14, `${stage.chapterTitle} ${stage.name}`, { fontSize: '14px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest });
     this.hpText = this.add.text(18, 34, '', { fontSize: '14px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest });
@@ -122,11 +137,22 @@ export class GameScene extends Scene {
     this.logsText = this.add.text(18, 610, '', { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: 320 } }).setOrigin(0, 1);
     this.add.text(18, 446, opening.openingNarration, { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark, wordWrap: { width: 320 } });
 
-    this.trapButtons = createTrapToolbar(this, { x: 100, y: 486, buttonWidth: 120, buttonHeight: 36, gapX: 20, gapY: 10 }, (trap) => this.selectTrap(trap));
-    createTextButton(this, { x: 100, y: 602, width: 120, height: 36, label: '1手戻し', onClick: () => this.undoLastPlacement(stage) });
-    createTextButton(this, { x: 260, y: 602, width: 120, height: 36, label: '実行', variant: 'primary', onClick: () => this.startRunning() });
-    createTextButton(this, { x: 100, y: 638, width: 120, height: 36, label: '再挑戦', variant: 'danger', onClick: () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages, tutorialMode: this.tutorialMode }) });
-    createTextButton(this, { x: 260, y: 638, width: 120, height: 36, label: 'ヒント', onClick: () => this.openTutorial() });
+    this.trapButtons = createTrapToolbar(
+      this,
+      {
+        x: UI_POSITIONS.trapGridStartX,
+        y: UI_POSITIONS.trapGridStartY,
+        buttonWidth: UI_POSITIONS.trapButtonWidth,
+        buttonHeight: UI_POSITIONS.trapButtonHeight,
+        gapX: UI_POSITIONS.trapGapX,
+        gapY: UI_POSITIONS.trapGapY
+      },
+      (trap) => this.selectTrap(trap)
+    );
+    createTextButton(this, { x: 100, y: UI_POSITIONS.actionRow1Y, width: 120, height: 36, label: '1手戻し', onClick: () => this.undoLastPlacement(stage) });
+    createTextButton(this, { x: 260, y: UI_POSITIONS.actionRow1Y, width: 120, height: 36, label: '実行', variant: 'primary', onClick: () => this.startRunning() });
+    createTextButton(this, { x: 100, y: UI_POSITIONS.actionRow2Y, width: 120, height: 36, label: '再挑戦', variant: 'danger', onClick: () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages, tutorialMode: this.tutorialMode }) });
+    createTextButton(this, { x: 260, y: UI_POSITIONS.actionRow2Y, width: 120, height: 36, label: 'ヒント', onClick: () => this.openTutorial() });
   }
 
   private registerInputs(stage: StageDefinition, data: GameSceneData): void {

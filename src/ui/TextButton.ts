@@ -41,9 +41,11 @@ export const createTextButton = (scene: Scene, options: TextButtonOptions): Text
   background.setStrokeStyle(GB_UI.panelBorder, 0x0f380f);
 
   const root = scene.add.container(options.x, options.y, [background, label]);
+  let currentDisabled = options.disabled ?? false;
   const setState = (next: { selected?: boolean; disabled?: boolean }): void => {
     const isSelected = next.selected ?? false;
     const isDisabled = next.disabled ?? false;
+    currentDisabled = isDisabled;
     const palette = getPalette(variant);
     const bgColor = isSelected ? GB_COLORS.darkest : palette.bg;
     const fgColor = isSelected ? GB_COLORS.lightest : palette.fg;
@@ -61,7 +63,7 @@ export const createTextButton = (scene: Scene, options: TextButtonOptions): Text
   setState({ selected: options.selected, disabled: options.disabled });
   root.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
     pointer.event.stopPropagation();
-    if (options.disabled) return;
+    if (currentDisabled) return;
     if (root.alpha < 1) return;
     options.onClick();
   });
