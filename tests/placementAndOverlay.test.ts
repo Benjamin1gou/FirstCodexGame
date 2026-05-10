@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canPlaceTrap, getEffectiveCostLimit } from '../src/core/rules/placementRules';
+import { canPlaceTrap, getEffectiveCostLimit, getPlacementBlockReason } from '../src/core/rules/placementRules';
 import { buildTrapRangeCells } from '../src/scenes/game/TrapPlacementOverlayRenderer';
 import type { StageDefinition, TrapType } from '../src/core/stage/stageTypes';
 
@@ -63,6 +63,12 @@ describe('placementRules', () => {
   it('costLimit を超えると置けない', () => {
     const withCostLimit: StageDefinition = { ...stage, costLimit: 3, trapLimit: 5 };
     expect(canPlaceTrap('planning', withCostLimit, { x: 2, y: 2 }, { x: 1, y: 1 }, [], 0, 2, 2).ok).toBe(false);
+  });
+
+
+  it('配置不可理由コードを返す', () => {
+    const reason = getPlacementBlockReason('planning', stage, { x: 2, y: 0 }, { x: 1, y: 1 }, [], 0, 0, 1);
+    expect(reason).toBe('wall');
   });
 
   it('costLimit 未指定時は trapLimit を使う', () => {

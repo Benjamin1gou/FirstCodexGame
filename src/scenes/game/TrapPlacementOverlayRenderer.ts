@@ -1,4 +1,4 @@
-import { canPlaceTrap } from '../../core/rules/placementRules';
+import { canPlaceTrap, getPlacementBlockReason, type PlacementBlockReason } from '../../core/rules/placementRules';
 import type { GameSimulationState } from '../../core/simulation/simulationTypes';
 import type { GridPosition, StageDefinition, TrapType } from '../../core/stage/stageTypes';
 import { TRAPS } from '../../config/gameConfig';
@@ -6,13 +6,13 @@ import { TRAPS } from '../../config/gameConfig';
 const PLACEABLE_COLOR = 0x77d78b;
 const BLOCKED_COLOR = 0x8892a0;
 const RANGE_COLOR = 0x7cc4ff;
-const REASON_COLORS = {
+const REASON_COLORS: Partial<Record<PlacementBlockReason, number>> = {
   wall: 0x6f7784,
   start: 0x5b91ff,
   goal: 0xf4be4a,
   hero: 0xb07de0,
   occupied: 0xd98989
-} as const;
+};
 const CELL_ALPHA = 0.18;
 const RANGE_ALPHA = 0.18;
 const REASON_ALPHA = 0.14;
@@ -64,7 +64,17 @@ export const renderPlacementOverlay = (
         TRAPS[selectedTrap].cost
       );
 
-      const reasonColor = getBlockedReasonColor(stage, { x, y }, state.hero.position, placedTrapPositions);
+      const blockReason = getPlacementBlockReason(
+        state.phase,
+        stage,
+        { x, y },
+        state.hero.position,
+        state.placedTraps,
+        state.placedTraps.length,
+        state.usedTrapCost,
+        TRAPS[selectedTrap].cost
+      );
+      const reasonColor = blockReason ? (REASON_COLORS[blockReason] ?? null) : null;
       const color = result.ok ? PLACEABLE_COLOR : (reasonColor ?? BLOCKED_COLOR);
       const alpha = result.ok ? CELL_ALPHA : (reasonColor ? REASON_ALPHA : 0.08);
       const rect = scene.add.rectangle(
@@ -100,19 +110,3 @@ export const destroyPlacementOverlay = (objects: Phaser.GameObjects.GameObject[]
   objects.forEach((obj) => obj.destroy());
 };
 
-const isSamePosition = (a: GridPosition, b: GridPosition): boolean => a.x === b.x && a.y === b.y;
-
-const getBlockedReasonColor = (
-  stage: StageDefinition,
-  position: GridPosition,
-  heroPosition: GridPosition,
-  placedTrapPositions: Set<string>
-): number | null => {
-  const tile = stage.tiles[position.y][position.x];
-  if (tile === 'wall') return REASON_COLORS.wall;
-  if (isSamePosition(position, stage.startPosition)) return REASON_COLORS.start;
-  if (isSamePosition(position, stage.goalPosition)) return REASON_COLORS.goal;
-  if (isSamePosition(position, heroPosition)) return REASON_COLORS.hero;
-  if (placedTrapPositions.has(toKey(position.x, position.y))) return REASON_COLORS.occupied;
-  return null;
-};
