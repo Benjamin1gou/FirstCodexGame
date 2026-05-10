@@ -4,7 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH, SCENES, TRAPS, TURN_INTERVAL_MS } from '../con
 import { decideHeroAction } from '../core/ai/heroDecisionEngine';
 import { getOpeningDialogue } from '../core/narrative/dialogueSelector';
 import { resolveEnding } from '../core/narrative/endingResolver';
-import { canPlaceTrap } from '../core/rules/placementRules';
+import { canPlaceTrap, getEffectiveCostLimit } from '../core/rules/placementRules';
 import { evaluateStageRank, type StageRank } from '../core/rules/rankEvaluator';
 import { judgeStageStatus } from '../core/rules/victoryJudge';
 import { predictRoute } from '../core/simulation/predictRoute';
@@ -22,6 +22,7 @@ import { createInitialSimulationState } from './game/GameSceneStateFactory';
 import { createHeroSprite, updateHeroSpritePosition } from './game/HeroRenderer';
 import { destroyGameObjects, renderPredictionMarkers } from './game/PredictionRenderer';
 import { createTrapToolbar, updateTrapToolbarState } from './game/TrapToolbar';
+import { destroyPlacementOverlay, renderPlacementOverlay } from './game/TrapPlacementOverlayRenderer';
 
 type GameSceneData = { stageIndex: number; totalTrapCost: number; clearedStages: number; tutorialMode?: boolean };
 export class GameScene extends Scene {
@@ -40,6 +41,7 @@ export class GameScene extends Scene {
   private trapButtons = {} as Record<TrapType, Phaser.GameObjects.Text>;
   private trapSprites: Phaser.GameObjects.GameObject[] = [];
   private predictionMarkers: Phaser.GameObjects.GameObject[] = [];
+  private placementOverlayObjects: Phaser.GameObjects.GameObject[] = [];
   private placementHistory: PlacedTrap[] = [];
   private latestRank: StageRank | null = null;
   private boardTileSize = 56;
@@ -67,6 +69,7 @@ export class GameScene extends Scene {
 
     this.time.addEvent({ delay: TURN_INTERVAL_MS, loop: true, callback: () => this.stepSimulation(stage) });
     this.updateUi(stage);
+    this.refreshPlacementOverlay(stage);
     if (this.tutorialMode) this.openTutorial();
   }
 
@@ -134,13 +137,16 @@ export class GameScene extends Scene {
     void AudioManager.unlock().catch(() => undefined);
     if (this.state.phase !== 'planning') return;
     this.state = { ...this.state, phase: 'running', logs: [...this.state.logs, createLog('phase_changed', this.state.turn, { phase: 'RUNNING' })] };
+    this.refreshPlacementOverlay(loadStageByIndex(this.stageIndex));
   }
 
   private selectTrap(trap: TrapType): void {
     if (this.state.phase !== 'planning') return;
     this.selectedTrap = trap;
     this.state = { ...this.state, logs: [...this.state.logs, createLog('trap_selected', this.state.turn, { trapName: TRAPS[trap].name })] };
-    this.updateUi(loadStageByIndex(this.stageIndex));
+    const stage = loadStageByIndex(this.stageIndex);
+    this.updateUi(stage);
+    this.refreshPlacementOverlay(stage);
   }
 
   private handleTrapPlacement(pointer: Phaser.Input.Pointer, stage: StageDefinition): void {
@@ -152,6 +158,7 @@ export class GameScene extends Scene {
     if (!result.ok) {
       this.state = { ...this.state, logs: [...this.state.logs, createLog('placement_denied', this.state.turn, { reason: result.reason })] };
       this.updateUi(stage);
+      this.refreshPlacementOverlay(stage);
       return;
     }
 
@@ -166,6 +173,7 @@ export class GameScene extends Scene {
     this.trapSprites.push(renderTrapTile(this, tileX, tileY, this.boardTileSize, this.boardOffset));
     this.refreshPredictions(stage);
     this.updateUi(stage);
+    this.refreshPlacementOverlay(stage);
   }
 
   private undoLastPlacement(stage: StageDefinition): void {
@@ -183,6 +191,13 @@ export class GameScene extends Scene {
     this.trapSprites.pop()?.destroy();
     this.refreshPredictions(stage);
     this.updateUi(stage);
+    this.refreshPlacementOverlay(stage);
+  }
+
+
+  private refreshPlacementOverlay(stage: StageDefinition): void {
+    destroyPlacementOverlay(this.placementOverlayObjects);
+    this.placementOverlayObjects = renderPlacementOverlay(this, stage, this.state, this.selectedTrap, this.boardTileSize, this.boardOffset);
   }
 
   private refreshPredictions(stage: StageDefinition): void {
@@ -255,7 +270,8 @@ export class GameScene extends Scene {
   }
 
   private updateUi(stage: StageDefinition): void {
-    this.hpText.setText(`${this.state.hero.hp}/${this.state.hero.maxHp}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${stage.trapLimit}`);
+    const effectiveCostLimit = getEffectiveCostLimit(stage);
+    this.hpText.setText(`${this.state.hero.hp}/${this.state.hero.maxHp}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${effectiveCostLimit}`);
     this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING / 選択中:${TRAPS[this.selectedTrap].name}` : 'PHASE: RUNNING');
     this.logsText.setText(this.state.logs.slice(-8).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
     updateTrapToolbarState(this.trapButtons, this.selectedTrap, this.state.phase === 'planning');

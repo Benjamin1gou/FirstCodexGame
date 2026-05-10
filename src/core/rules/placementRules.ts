@@ -3,6 +3,8 @@ import type { GridPosition, StageDefinition } from '../stage/stageTypes';
 
 export type PlacementResult = { ok: true } | { ok: false; reason: string };
 
+export const getEffectiveCostLimit = (stage: StageDefinition): number => stage.costLimit ?? stage.trapLimit;
+
 export const canPlaceTrap = (
   phase: GamePhase,
   stage: StageDefinition,
@@ -22,6 +24,6 @@ export const canPlaceTrap = (
   if (position.x === heroPosition.x && position.y === heroPosition.y) return { ok: false, reason: '勇者のいるマスには置けません。' };
   if (placedTraps.some((trap) => trap.x === position.x && trap.y === position.y)) return { ok: false, reason: 'このマスには配置できません。' };
   if (usedTrapCount >= stage.trapLimit) return { ok: false, reason: '罠の上限に達しています。' };
-  if (usedCost + nextTrapCost > stage.trapLimit) return { ok: false, reason: 'コストが足りません。' };
+  if (usedCost + nextTrapCost > getEffectiveCostLimit(stage)) return { ok: false, reason: 'コストが足りません。' };
   return { ok: true };
 };
