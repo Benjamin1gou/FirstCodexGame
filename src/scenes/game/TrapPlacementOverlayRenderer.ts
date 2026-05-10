@@ -61,7 +61,8 @@ export const renderPlacementOverlay = (
         state.placedTraps,
         state.placedTraps.length,
         state.usedTrapCost,
-        TRAPS[selectedTrap].cost
+        TRAPS[selectedTrap].cost,
+        state.mana
       );
 
       const blockReason = getPlacementBlockReason(
@@ -72,7 +73,8 @@ export const renderPlacementOverlay = (
         state.placedTraps,
         state.placedTraps.length,
         state.usedTrapCost,
-        TRAPS[selectedTrap].cost
+        TRAPS[selectedTrap].cost,
+        state.mana
       );
       const reasonColor = blockReason ? (REASON_COLORS[blockReason] ?? null) : null;
       const color = result.ok ? PLACEABLE_COLOR : (reasonColor ?? BLOCKED_COLOR);

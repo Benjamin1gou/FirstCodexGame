@@ -60,6 +60,10 @@ describe('placementRules', () => {
     expect(canPlaceTrap('planning', stage, { x: 2, y: 2 }, { x: 1, y: 1 }, [], 2, 0, 1).ok).toBe(false);
   });
 
+  it('mana が足りないと置けない', () => {
+    expect(canPlaceTrap('planning', stage, { x: 1, y: 2 }, { x: 1, y: 1 }, [], 0, 0, 2, 1).ok).toBe(false);
+  });
+
   it('costLimit を超えると置けない', () => {
     const withCostLimit: StageDefinition = { ...stage, costLimit: 3, trapLimit: 5 };
     expect(canPlaceTrap('planning', withCostLimit, { x: 2, y: 2 }, { x: 1, y: 1 }, [], 0, 2, 2).ok).toBe(false);
