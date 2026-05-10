@@ -37,6 +37,23 @@ FirstCodexGame は **TypeScript + Phaser + Vite** で作られた、静的配信
 ## スコア・ランク
 ランクは `S/A/B/C`。使用コスト・罠数・ターン数・残HPを元に評価します。
 
+
+## ディレクトリ構成（抜粋）
+- `src/scenes/GameScene.ts`: シーンのライフサイクルと主要フロー制御
+- `src/scenes/game/GameSceneStateFactory.ts`: シミュレーション初期状態生成
+- `src/scenes/game/GameSceneLayout.ts`: 盤面レイアウト計算とUI定数
+- `src/scenes/game/BoardRenderer.ts`: タイル/罠の盤面描画
+- `src/scenes/game/HeroRenderer.ts`: 勇者スプライト生成と座標更新
+- `src/ui/TextButton.ts`: テキストボタン生成の共通ユーティリティ
+- `src/core/*`: ルール/AI/シミュレーションなどの純粋ロジック
+
+## 開発時の確認コマンド
+```bash
+npm run test
+npm run build-nolog
+npm run scan:secrets
+```
+
 ## テスト
 ```bash
 npm run test
