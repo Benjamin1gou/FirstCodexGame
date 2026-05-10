@@ -99,3 +99,11 @@
 - [x] stageRepository / stageLoader の型と検証を強化
 - [x] coreロジックの単体テストを拡充
 - [x] README に構成と検証コマンドを追記
+
+
+## Phase 16: Placement UX & Limit Split
+- [x] trapLimit（個数）とcostLimit（コスト）を分離
+- [x] planningフェーズの配置ハイライトを追加
+- [x] 罠ごとの簡易範囲（arrow/decoy）を追加
+- [x] ルール/オーバーレイのVitestを追加
+- [x] READMEへ仕様追記

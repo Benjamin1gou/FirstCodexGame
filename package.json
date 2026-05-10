@@ -17,7 +17,7 @@
     "dev": "vite --config vite/config.dev.mjs",
     "build": "vite build --config vite/config.prod.mjs",
     "preview": "vite preview",
-    "scan:secrets": "git grep -n -E \"(API_KEY|SECRET|TOKEN|PASSWORD|PRIVATE_KEY|BEGIN RSA|BEGIN OPENSSH|ghp_|sk-)\" -- . ':!package-lock.json'",
+    "scan:secrets": "sh -c 'if git grep -n -E \"(API_KEY|SECRET|TOKEN|PASSWORD|PRIVATE_KEY|BEGIN RSA|BEGIN OPENSSH|ghp_|sk-)\" -- . \":!package-lock.json\" \":!package.json\" \":!SECURITY_CHECKLIST.md\"; then echo \"Potential secrets detected\"; exit 1; else echo \"No secrets detected\"; exit 0; fi'",
     "build-nolog": "vite build --config vite/config.prod.mjs --logLevel error",
     "test": "vitest run",
     "test:watch": "vitest"

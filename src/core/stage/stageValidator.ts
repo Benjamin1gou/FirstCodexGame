@@ -39,6 +39,7 @@ export const validateStage = (stage: StageDefinition, heroes: HeroDefinition[]):
   if (!isInside(stage.startPosition, stage.width, stage.height)) errors.push({ stageId: stage.id, message: 'startPositionが盤面外' });
   if (!isInside(stage.goalPosition, stage.width, stage.height)) errors.push({ stageId: stage.id, message: 'goalPositionが盤面外' });
   if (stage.trapLimit < 0) errors.push({ stageId: stage.id, message: 'trapLimitが不正' });
+  if (stage.costLimit !== undefined && stage.costLimit < 0) errors.push({ stageId: stage.id, message: 'costLimitが不正' });
   if (!heroes.some((hero) => hero.id === stage.heroId)) errors.push({ stageId: stage.id, message: 'heroIdが未定義' });
   stage.initialTraps.forEach((trap) => {
     if (!isInside(trap, stage.width, stage.height)) errors.push({ stageId: stage.id, message: `initialTrapsが盤面外: ${trap.x},${trap.y}` });

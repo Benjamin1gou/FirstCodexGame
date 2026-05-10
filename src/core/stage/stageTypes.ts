@@ -29,6 +29,7 @@ export type StageDefinition = {
   goalPosition: GridPosition;
   heroId: string;
   trapLimit: number;
+  costLimit?: number;
   initialTraps: PlacedTrap[];
   chests: GridPosition[];
   tutorialHint: string;

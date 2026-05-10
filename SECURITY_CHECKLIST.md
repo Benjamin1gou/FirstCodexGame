@@ -32,7 +32,7 @@
 
 ## 公開前チェック
 - `npm run scan:secrets` で機密らしき文字列を点検する
-- 必要に応じて `git grep -n -E "(API_KEY|SECRET|TOKEN|PASSWORD|PRIVATE_KEY|BEGIN RSA|BEGIN OPENSSH|ghp_|sk-)" -- . ':!package-lock.json'` を実行する
+- 必要に応じて `npm run scan:secrets` を実行する（自己参照ノイズを避けるため `package.json` / `SECURITY_CHECKLIST.md` は除外設定済み）
 
 ## 実行コマンド
 - 不審な install script を避ける
