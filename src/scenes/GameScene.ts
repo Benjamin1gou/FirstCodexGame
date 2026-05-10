@@ -17,6 +17,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
 import { createLog } from '../systems/LogSystem';
 import { createTextButton } from '../ui/TextButton';
+import { GB_COLORS, GB_UI } from '../ui/gbTheme';
 import { renderBoardTiles } from './game/BoardRenderer';
 import { computeBoardLayout, GAME_SCENE_LAYOUT } from './game/GameSceneLayout';
 import { formatTrapInfoText } from './game/TrapInfoText';
@@ -42,14 +43,14 @@ export class GameScene extends Scene {
   private modeText!: Phaser.GameObjects.Text;
   private predictionText!: Phaser.GameObjects.Text;
   private trapInfoText!: Phaser.GameObjects.Text;
-  private trapButtons = {} as Record<TrapType, Phaser.GameObjects.Text>;
+  private trapButtons = {} as ReturnType<typeof createTrapToolbar>;
   private trapSprites: Phaser.GameObjects.Image[] = [];
   private predictionMarkers: Phaser.GameObjects.GameObject[] = [];
   private placementOverlayObjects: Phaser.GameObjects.GameObject[] = [];
   private placementHistory: PlacedTrap[] = [];
   private latestRank: StageRank | null = null;
-  private boardTileSize = 56;
-  private boardOffset = { x: 20, y: 140 };
+  private boardTileSize = 32;
+  private boardOffset = { x: 0, y: 0 };
   private tutorialMode = false;
   private tutorialStepIndex = 0;
   private tutorialOverlay: Phaser.GameObjects.Rectangle | null = null;
@@ -105,23 +106,27 @@ export class GameScene extends Scene {
 
   private renderUi(stage: StageDefinition): void {
     const opening = getOpeningDialogue(stage.id);
-    this.add.image(16, 8, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GAME_SCENE_LAYOUT.topPanelHeight - 12);
-    this.add.image(16, GAME_HEIGHT - GAME_SCENE_LAYOUT.bottomPanelHeight, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GAME_SCENE_LAYOUT.bottomPanelHeight - 16);
+    const panelColor = Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color;
+    const borderColor = Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color;
+    const topY = 6;
+    this.add.rectangle(180, topY + 34, 340, 68, panelColor).setStrokeStyle(2, borderColor);
+    this.add.rectangle(180, 398, 340, 44, panelColor).setStrokeStyle(2, borderColor);
+    this.add.rectangle(180, 530, 340, 214, panelColor).setStrokeStyle(2, borderColor);
 
-    this.add.text(30, 16, `${stage.chapterTitle} ${stage.name}`, { fontSize: '24px' });
-    this.add.text(30, 48, `${this.state.hero.name} Status`, { fontSize: '20px' });
-    this.hpText = this.add.text(160, 48, '', { fontSize: '20px' });
-    this.modeText = this.add.text(30, 74, '', { fontSize: '16px' });
-    this.add.text(30, 96, '罠: [1]トゲ [2]スライム [3]デコイ [4]矢雨 [5]恐怖 [6]落とし穴 / Backspace:1手戻し', { fontSize: '16px' });
-    this.predictionText = this.add.text(30, 118, '', { fontSize: '16px' });
-    this.trapInfoText = this.add.text(30, 140, '', { fontSize: '15px' });
-    this.add.text(30, 162, opening.openingNarration, { fontSize: '15px', wordWrap: { width: Math.max(200, GAME_SCENE_LAYOUT.buttonColumnX - 48) } });
-    this.logsText = this.add.text(30, GAME_HEIGHT - GAME_SCENE_LAYOUT.bottomPanelHeight + 14, '', { fontSize: '14px', wordWrap: { width: 620 } });
+    this.add.text(18, 14, `${stage.chapterTitle} ${stage.name}`, { fontSize: '14px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest });
+    this.hpText = this.add.text(18, 34, '', { fontSize: '14px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest });
+    this.modeText = this.add.text(18, 52, '', { fontSize: '13px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark });
 
-    this.trapButtons = createTrapToolbar(this, GAME_SCENE_LAYOUT.buttonColumnX, (trap) => this.selectTrap(trap));
-    createTextButton(this, { x: GAME_SCENE_LAYOUT.actionButtonX, y: 30, label: '実行', onClick: () => this.startRunning() });
-    createTextButton(this, { x: GAME_SCENE_LAYOUT.actionButtonX, y: 80, label: '1手戻し', onClick: () => this.undoLastPlacement(stage) });
-    createTextButton(this, { x: GAME_SCENE_LAYOUT.actionButtonX, y: 130, label: 'リスタート', onClick: () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages }) });
+    this.trapInfoText = this.add.text(18, 390, '', { fontSize: '14px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: 320 } });
+    this.predictionText = this.add.text(18, 412, '', { fontSize: '12px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark });
+    this.logsText = this.add.text(18, 610, '', { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: 320 } }).setOrigin(0, 1);
+    this.add.text(18, 446, opening.openingNarration, { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark, wordWrap: { width: 320 } });
+
+    this.trapButtons = createTrapToolbar(this, { x: 100, y: 486, buttonWidth: 120, buttonHeight: 36, gapX: 20, gapY: 10 }, (trap) => this.selectTrap(trap));
+    createTextButton(this, { x: 100, y: 602, width: 120, height: 36, label: '1手戻し', onClick: () => this.undoLastPlacement(stage) });
+    createTextButton(this, { x: 260, y: 602, width: 120, height: 36, label: '実行', variant: 'primary', onClick: () => this.startRunning() });
+    createTextButton(this, { x: 100, y: 638, width: 120, height: 36, label: '再挑戦', variant: 'danger', onClick: () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages, tutorialMode: this.tutorialMode }) });
+    createTextButton(this, { x: 260, y: 638, width: 120, height: 36, label: 'ヒント', onClick: () => this.openTutorial() });
   }
 
   private registerInputs(stage: StageDefinition, data: GameSceneData): void {
@@ -290,8 +295,11 @@ export class GameScene extends Scene {
     const effectiveCostLimit = getEffectiveCostLimit(stage);
     this.hpText.setText(`HP ${this.state.hero.hp}/${this.state.hero.maxHp}  Mana:${this.state.mana}/${this.state.maxMana}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${effectiveCostLimit}`);
     this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING` : 'PHASE: RUNNING');
-    this.trapInfoText.setText(formatTrapInfoText(this.selectedTrap));
-    this.logsText.setText(this.state.logs.slice(-8).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
+    const trapInfo = formatTrapInfoText(this.selectedTrap);
+    const selectedCost = TRAPS[this.selectedTrap].cost;
+    const manaWarn = this.state.mana < selectedCost ? ` MP不足: COST ${selectedCost} / MP ${this.state.mana}` : '';
+    this.trapInfoText.setText(`▶ ${trapInfo}${manaWarn}`);
+    this.logsText.setText(this.state.logs.slice(-3).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
     updateTrapToolbarState(this.trapButtons, this.selectedTrap, this.state.phase === 'planning');
   }
 
@@ -303,9 +311,9 @@ export class GameScene extends Scene {
 
   private showTutorialStep(): void {
     this.destroyTutorialOverlay();
-    this.tutorialOverlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7).setOrigin(0).setDepth(2000);
+    this.tutorialOverlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color, 0.85).setOrigin(0).setDepth(2000);
     const body = GameScene.TUTORIAL_STEPS[this.tutorialStepIndex] ?? 'チュートリアルは完了しました。';
-    this.tutorialText = this.add.text(120, 200, `${body}\n\nクリック / タップで次へ`, { fontSize: '28px', color: '#ffffff', wordWrap: { width: GAME_WIDTH - 240 } }).setDepth(2001);
+    this.tutorialText = this.add.text(24, 160, `${body}\n\nタップで次へ`, { fontSize: '19px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.white, wordWrap: { width: GAME_WIDTH - 48 } }).setDepth(2001);
     this.tutorialOverlay.setInteractive({ useHandCursor: true });
     this.tutorialOverlay.on('pointerdown', () => {
       this.tutorialStepIndex += 1;
