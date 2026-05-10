@@ -112,3 +112,11 @@
 - [x] costLimit/配置ハイライト安定化テストを追加（placementRules/getEffectiveCostLimit/buildTrapRangeCells）
 - [x] 配置不可ハイライトの視認性を調整（理由別の抑制色 + 予測ルートとの分離）
 - [x] 選択中罠の説明UI（名称/Cost/効果）を追加
+
+
+## Phase 18: Trap Operation System 강화
+- [x] 魔力リソース制（mana/maxMana）を追加
+- [x] 罠状態（発動回数/クールタイム/破壊）を追加
+- [x] 罠状態の表示反映（通常/クールダウン/破壊）
+- [x] 罠状態・配置ルールのVitestを拡張
+- [x] READMEへ運用仕様を追記

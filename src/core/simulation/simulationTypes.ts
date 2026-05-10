@@ -20,7 +20,11 @@ export type LogType =
   | 'prediction_updated'
   | 'hero_slowed'
   | 'decoy_reacted'
-  | 'rank_shown';
+  | 'rank_shown'
+  | 'trap_cooldown_started'
+  | 'trap_ready'
+  | 'trap_destroyed'
+  | 'mana_changed';
 
 export type ActionLog = { type: LogType; text: string; turn: number };
 
@@ -36,4 +40,6 @@ export type GameSimulationState = {
   logs: ActionLog[];
   score: number;
   usedTrapCost: number;
+  mana: number;
+  maxMana: number;
 };

@@ -15,6 +15,11 @@ export type TrapDefinition = {
 
 export type PlacedTrap = GridPosition & {
   type: TrapType;
+  triggerCount?: number;
+  maxTriggerCount?: number;
+  remainingCooldown?: number;
+  cooldownTurns?: number;
+  destroyed?: boolean;
 };
 
 export type StageDefinition = {
@@ -30,6 +35,8 @@ export type StageDefinition = {
   heroId: string;
   trapLimit: number;
   costLimit?: number;
+  initialMana?: number;
+  maxMana?: number;
   initialTraps: PlacedTrap[];
   chests: GridPosition[];
   tutorialHint: string;

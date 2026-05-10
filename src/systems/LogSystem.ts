@@ -19,7 +19,11 @@ const TEMPLATES: Record<LogType, string> = {
   prediction_updated: '予測ルートを更新しました。',
   hero_slowed: '{heroName}は足止めされた。',
   decoy_reacted: '{heroName}はデコイに反応した。',
-  rank_shown: 'RANK: {rank}'
+  rank_shown: 'RANK: {rank}',
+  trap_cooldown_started: '{trapName}はまだ再使用待ちです。',
+  trap_ready: '{trapName}が再使用可能になった。',
+  trap_destroyed: '{trapName}は壊れた。',
+  mana_changed: '魔力が{manaDelta}回復した。'
 };
 
 export const createLog = (type: LogType, turn: number, vars: Record<string, string | number> = {}): ActionLog => {

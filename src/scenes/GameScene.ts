@@ -9,6 +9,7 @@ import { evaluateStageRank, type StageRank } from '../core/rules/rankEvaluator';
 import { judgeStageStatus } from '../core/rules/victoryJudge';
 import { predictRoute } from '../core/simulation/predictRoute';
 import { applyTrapEffect } from '../core/simulation/trapEffects';
+import { createPlacedTrap, tickTrapCooldowns } from '../core/simulation/trapState';
 import type { GamePhase, GameSimulationState } from '../core/simulation/simulationTypes';
 import { getStageCount, loadStageByIndex } from '../core/stage/stageLoader';
 import type { GridPosition, PlacedTrap, StageDefinition, TrapType } from '../core/stage/stageTypes';
@@ -16,7 +17,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
 import { createLog } from '../systems/LogSystem';
 import { createTextButton } from '../ui/TextButton';
-import { renderBoardTiles, renderTrapTile } from './game/BoardRenderer';
+import { renderBoardTiles } from './game/BoardRenderer';
 import { computeBoardLayout, GAME_SCENE_LAYOUT } from './game/GameSceneLayout';
 import { formatTrapInfoText } from './game/TrapInfoText';
 import { createInitialSimulationState } from './game/GameSceneStateFactory';
@@ -24,6 +25,7 @@ import { createHeroSprite, updateHeroSpritePosition } from './game/HeroRenderer'
 import { destroyGameObjects, renderPredictionMarkers } from './game/PredictionRenderer';
 import { createTrapToolbar, updateTrapToolbarState } from './game/TrapToolbar';
 import { destroyPlacementOverlay, renderPlacementOverlay } from './game/TrapPlacementOverlayRenderer';
+import { renderTrapSprites } from './game/TrapRenderer';
 
 type GameSceneData = { stageIndex: number; totalTrapCost: number; clearedStages: number; tutorialMode?: boolean };
 export class GameScene extends Scene {
@@ -41,7 +43,7 @@ export class GameScene extends Scene {
   private predictionText!: Phaser.GameObjects.Text;
   private trapInfoText!: Phaser.GameObjects.Text;
   private trapButtons = {} as Record<TrapType, Phaser.GameObjects.Text>;
-  private trapSprites: Phaser.GameObjects.GameObject[] = [];
+  private trapSprites: Phaser.GameObjects.Image[] = [];
   private predictionMarkers: Phaser.GameObjects.GameObject[] = [];
   private placementOverlayObjects: Phaser.GameObjects.GameObject[] = [];
   private placementHistory: PlacedTrap[] = [];
@@ -65,6 +67,7 @@ export class GameScene extends Scene {
     const stage = this.setupState(data);
 
     this.setupBoard(stage);
+    this.trapSprites = renderTrapSprites(this, this.state.placedTraps, this.boardTileSize, this.boardOffset);
     this.renderUi(stage);
     this.refreshPredictions(stage);
     this.registerInputs(stage, data);
@@ -106,7 +109,7 @@ export class GameScene extends Scene {
     this.add.image(16, GAME_HEIGHT - GAME_SCENE_LAYOUT.bottomPanelHeight, ASSET_KEYS.ui.panel).setOrigin(0).setDisplaySize(GAME_WIDTH - 32, GAME_SCENE_LAYOUT.bottomPanelHeight - 16);
 
     this.add.text(30, 16, `${stage.chapterTitle} ${stage.name}`, { fontSize: '24px' });
-    this.add.text(30, 48, `${this.state.hero.name} HP`, { fontSize: '20px' });
+    this.add.text(30, 48, `${this.state.hero.name} Status`, { fontSize: '20px' });
     this.hpText = this.add.text(160, 48, '', { fontSize: '20px' });
     this.modeText = this.add.text(30, 74, '', { fontSize: '16px' });
     this.add.text(30, 96, '罠: [1]トゲ [2]スライム [3]デコイ [4]矢雨 [5]恐怖 [6]落とし穴 / Backspace:1手戻し', { fontSize: '16px' });
@@ -157,7 +160,7 @@ export class GameScene extends Scene {
     const tileY = Math.floor((pointer.y - this.boardOffset.y) / this.boardTileSize);
     if (tileX < 0 || tileY < 0 || tileX >= stage.width || tileY >= stage.height) return;
 
-    const result = canPlaceTrap(this.state.phase, stage, { x: tileX, y: tileY }, this.state.hero.position, this.state.placedTraps, this.state.placedTraps.length, this.state.usedTrapCost, TRAPS[this.selectedTrap].cost);
+    const result = canPlaceTrap(this.state.phase, stage, { x: tileX, y: tileY }, this.state.hero.position, this.state.placedTraps, this.state.placedTraps.length, this.state.usedTrapCost, TRAPS[this.selectedTrap].cost, this.state.mana);
     if (!result.ok) {
       this.state = { ...this.state, logs: [...this.state.logs, createLog('placement_denied', this.state.turn, { reason: result.reason })] };
       this.updateUi(stage);
@@ -165,15 +168,16 @@ export class GameScene extends Scene {
       return;
     }
 
-    const placedTrap: PlacedTrap = { x: tileX, y: tileY, type: this.selectedTrap };
+    const placedTrap: PlacedTrap = createPlacedTrap({ x: tileX, y: tileY }, this.selectedTrap);
     this.placementHistory = [...this.placementHistory, placedTrap];
     this.state = {
       ...this.state,
       placedTraps: [...this.state.placedTraps, placedTrap],
       usedTrapCost: this.state.usedTrapCost + TRAPS[this.selectedTrap].cost,
+      mana: Math.max(0, this.state.mana - TRAPS[this.selectedTrap].cost),
       logs: [...this.state.logs, createLog('trap_placed', this.state.turn, { trapName: TRAPS[this.selectedTrap].name })]
     };
-    this.trapSprites.push(renderTrapTile(this, tileX, tileY, this.boardTileSize, this.boardOffset));
+    this.trapSprites = renderTrapSprites(this, this.state.placedTraps, this.boardTileSize, this.boardOffset);
     this.refreshPredictions(stage);
     this.updateUi(stage);
     this.refreshPlacementOverlay(stage);
@@ -189,9 +193,11 @@ export class GameScene extends Scene {
       ...this.state,
       placedTraps: this.state.placedTraps.slice(0, -1),
       usedTrapCost: Math.max(0, this.state.usedTrapCost - TRAPS[last.type].cost),
+      mana: Math.min(this.state.maxMana, this.state.mana + TRAPS[last.type].cost),
       logs: [...this.state.logs, createLog('trap_removed', this.state.turn, { trapName: TRAPS[last.type].name })]
     };
-    this.trapSprites.pop()?.destroy();
+    this.trapSprites.forEach((sprite) => sprite.destroy());
+    this.trapSprites = renderTrapSprites(this, this.state.placedTraps, this.boardTileSize, this.boardOffset);
     this.refreshPredictions(stage);
     this.updateUi(stage);
     this.refreshPlacementOverlay(stage);
@@ -223,6 +229,8 @@ export class GameScene extends Scene {
     const judgedStatus = judgeStageStatus(nextState, stage.goalPosition);
     this.state = { ...nextState, status: judgedStatus, phase: judgedStatus === 'playing' ? 'running' : (judgedStatus as GamePhase) };
     updateHeroSpritePosition(this.heroSprite, this.state.hero.position, this.boardTileSize, this.boardOffset);
+    this.trapSprites.forEach((sprite) => sprite.destroy());
+    this.trapSprites = renderTrapSprites(this, this.state.placedTraps, this.boardTileSize, this.boardOffset);
     this.updateUi(stage);
     if (judgedStatus !== 'playing') this.finishStage(judgedStatus);
   }
@@ -231,15 +239,20 @@ export class GameScene extends Scene {
     const decision = decideHeroAction(this.state.hero, stage.tiles, stage.goalPosition, this.state.placedTraps, stage.chests);
     const steppedTrap = this.state.placedTraps.find((trap) => trap.x === decision.nextPosition.x && trap.y === decision.nextPosition.y);
     const effect = applyTrapEffect(steppedTrap, this.state.turn + 1, this.state.hero.name);
+    const cooldownTick = tickTrapCooldowns(this.state.placedTraps);
     const previousPosition = { ...this.state.hero.position };
     const nextPosition: GridPosition = effect.reverseStep ? previousPosition : decision.nextPosition;
     const seenTraps = steppedTrap && !this.state.hero.memory.seenTraps.some((p) => p.x === steppedTrap.x && p.y === steppedTrap.y)
       ? [...this.state.hero.memory.seenTraps, { x: steppedTrap.x, y: steppedTrap.y }]
       : this.state.hero.memory.seenTraps;
 
+    const trapsAfterEffect = cooldownTick.traps.map((trap) => steppedTrap && trap.x === steppedTrap.x && trap.y === steppedTrap.y && effect.updatedTrap ? effect.updatedTrap : trap);
+    const logs = [...this.state.logs, createLog('hero_reason', this.state.turn + 1, { reason: decision.reason }), ...effect.logs, ...cooldownTick.readied.map((trap) => createLog('trap_ready', this.state.turn + 1, { trapName: TRAPS[trap.type].name }))];
+
     return {
       ...this.state,
       turn: this.state.turn + 1,
+      placedTraps: trapsAfterEffect,
       hero: {
         ...this.state.hero,
         position: nextPosition,
@@ -247,7 +260,8 @@ export class GameScene extends Scene {
         skipTurns: effect.skipTurns,
         memory: { ...this.state.hero.memory, seenTraps, lastPosition: previousPosition }
       },
-      logs: [...this.state.logs, createLog('hero_reason', this.state.turn + 1, { reason: decision.reason }), ...effect.logs]
+      mana: Math.min(this.state.maxMana, this.state.mana + effect.manaDelta),
+      logs
     };
   }
 
@@ -274,7 +288,7 @@ export class GameScene extends Scene {
 
   private updateUi(stage: StageDefinition): void {
     const effectiveCostLimit = getEffectiveCostLimit(stage);
-    this.hpText.setText(`${this.state.hero.hp}/${this.state.hero.maxHp}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${effectiveCostLimit}`);
+    this.hpText.setText(`HP ${this.state.hero.hp}/${this.state.hero.maxHp}  Mana:${this.state.mana}/${this.state.maxMana}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${effectiveCostLimit}`);
     this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING` : 'PHASE: RUNNING');
     this.trapInfoText.setText(formatTrapInfoText(this.selectedTrap));
     this.logsText.setText(this.state.logs.slice(-8).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
