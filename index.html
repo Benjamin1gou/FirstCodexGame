@@ -10,9 +10,30 @@
 </head>
 
 <body>
-    <div id="app">
+  <div id="app">
+    <main id="game-layout">
+      <section id="game-area" aria-label="game screen">
         <div id="game-container"></div>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
+      </section>
+      <section id="gb-controls" aria-label="game controls">
+        <div class="dpad" aria-label="direction buttons">
+          <button class="dpad-btn dpad-up" data-action="up" aria-label="up">▲</button>
+          <button class="dpad-btn dpad-left" data-action="left" aria-label="left">◀</button>
+          <div class="dpad-center" aria-hidden="true"></div>
+          <button class="dpad-btn dpad-right" data-action="right" aria-label="right">▶</button>
+          <button class="dpad-btn dpad-down" data-action="down" aria-label="down">▼</button>
+        </div>
+        <div class="ab-buttons" aria-label="action buttons">
+          <button class="round-btn b-btn" data-action="b" aria-label="B button">B</button>
+          <button class="round-btn a-btn" data-action="a" aria-label="A button">A</button>
+        </div>
+        <div class="system-buttons" aria-label="system buttons">
+          <button class="pill-btn select-btn" data-action="select" aria-label="select">SELECT</button>
+          <button class="pill-btn start-btn" data-action="start" aria-label="start">START</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

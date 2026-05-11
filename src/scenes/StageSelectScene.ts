@@ -34,7 +34,11 @@ export class StageSelectScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-LEFT', movePrev);
     this.input.keyboard?.on('keydown-RIGHT', moveNext);
+    this.input.keyboard?.on('keydown-UP', movePrev);
+    this.input.keyboard?.on('keydown-DOWN', moveNext);
     this.input.keyboard?.on('keydown-ENTER', start);
+    this.input.keyboard?.on('keydown-Z', start);
+    this.input.keyboard?.on('keydown-ESC', back);
     this.input.keyboard?.on('keydown-T', back);
   }
 }

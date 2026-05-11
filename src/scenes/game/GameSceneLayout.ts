@@ -2,14 +2,14 @@ import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE } from '../../config/gameConfig';
 import type { StageDefinition } from '../../core/stage/stageTypes';
 
 export const GAME_SCENE_LAYOUT = {
-  screenPadding: 10,
-  topPanelHeight: 84,
-  boardTopPadding: 8,
-  boardBottomPadding: 8,
-  trapInfoHeight: 48,
-  bottomPanelHeight: 230,
-  trapToolbarTop: 430,
-  actionButtonTop: 560
+  screenPadding: 4,
+  topPanelHeight: 44,
+  boardTopPadding: 4,
+  boardBottomPadding: 4,
+  trapInfoHeight: 28,
+  bottomPanelHeight: 36,
+  trapToolbarTop: 0,
+  actionButtonTop: 0
 } as const;
 
 export type BoardLayout = {
