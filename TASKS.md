@@ -144,3 +144,7 @@
 - [x] `mobileControls` を追加し、A/B/START/SELECT/D-pad の押下状態を管理
 - [x] GameSceneへ盤面カーソル移動・A配置・B戻す・SELECT切替・START実行/一時停止を追加
 - [x] Phaser内大型ボタンを削減しHUD/ログ最小化（ログ2行）
+
+## Phase 23: GB UI Layout Fix
+- [x] style.css を `src/main.ts` から import する構成へ変更し、Pages配信時の反映漏れを防止
+- [x] StageSelectScene の Phaser内ボタン/外枠を削除し、HTMLコントローラー操作へ統一

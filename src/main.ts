@@ -1,3 +1,4 @@
+import '../style.css';
 import StartGame from './game/main';
 import { mobileControls } from './input/mobileControls';
 
