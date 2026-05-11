@@ -1,44 +1,89 @@
 import * as Phaser from 'phaser';
 import { SCENES } from '../config/gameConfig';
+import { mobileControls } from '../input/mobileControls';
 import { STAGES } from '../core/stage/stageRepository';
 import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
 import { GB_COLORS, GB_UI } from '../ui/gbTheme';
-import { createTextButton } from '../ui/TextButton';
 
 type StageSelectData = { index?: number; totalTrapCost?: number; clearedStages?: number; tutorialMode?: boolean };
 
 export class StageSelectScene extends Phaser.Scene {
   constructor() { super(SCENES.stageSelect); }
 
+  private selectedIndex = 0;
+  private stageTexts: Phaser.GameObjects.Text[] = [];
+  private data: StageSelectData = {};
+
   create(data: StageSelectData = {}): void {
     AudioManager.bindGlobalUnlock(this);
     createMuteButton(this);
     void AudioManager.playTitleBgm().catch(() => undefined);
-    let cur = data.index ?? 0;
 
-    this.add.rectangle(180, 320, 340, 600, Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color).setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color);
-    this.add.text(180, 48, 'ステージ選択', { fontSize: '24px', color: GB_COLORS.darkest, fontFamily: GB_UI.fontFamily }).setOrigin(0.5, 0);
-    const stageTexts = STAGES.map((s, i) => this.add.text(36, 92 + i * 34, `${i + 1}. ${s.name}`, { fontSize: '16px', color: i === cur ? GB_COLORS.lightest : GB_COLORS.darkest, backgroundColor: i === cur ? GB_COLORS.darkest : undefined, fontFamily: GB_UI.fontFamily, padding: { x: 4, y: 2 } }));
+    this.data = { ...data };
+    this.selectedIndex = data.index ?? 0;
 
-    const update = () => stageTexts.forEach((t, i) => { t.setBackgroundColor(i === cur ? GB_COLORS.darkest : undefined); t.setColor(i === cur ? GB_COLORS.lightest : GB_COLORS.darkest); });
-    const movePrev = () => { cur = Math.max(0, cur - 1); update(); };
-    const moveNext = () => { cur = Math.min(STAGES.length - 1, cur + 1); update(); };
-    const start = () => this.scene.start(SCENES.game, { stageIndex: cur, totalTrapCost: data.totalTrapCost ?? 0, clearedStages: data.clearedStages ?? 0, tutorialMode: data.tutorialMode ?? false });
-    const back = () => this.scene.start(SCENES.title);
+    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HexStringToColor(GB_COLORS.light));
 
-    createTextButton(this, { x: 100, y: 470, label: '前へ', width: 120, height: 40, onClick: movePrev });
-    createTextButton(this, { x: 260, y: 470, label: '次へ', width: 120, height: 40, onClick: moveNext });
-    createTextButton(this, { x: 100, y: 520, label: '開始', width: 120, height: 40, variant: 'primary', onClick: start });
-    createTextButton(this, { x: 260, y: 520, label: 'タイトル', width: 120, height: 40, onClick: back });
+    this.add.text(180, 40, 'ステージ選択', { fontSize: '24px', color: GB_COLORS.darkest, fontFamily: GB_UI.fontFamily }).setOrigin(0.5, 0);
+    this.stageTexts = STAGES.map((stage, index) => this.add.text(32, 90 + index * 34, `${index + 1}. ${stage.name}`, {
+      fontSize: '16px',
+      color: index === this.selectedIndex ? GB_COLORS.lightest : GB_COLORS.darkest,
+      backgroundColor: index === this.selectedIndex ? GB_COLORS.darkest : undefined,
+      fontFamily: GB_UI.fontFamily,
+      padding: { x: 4, y: 2 }
+    }));
 
-    this.input.keyboard?.on('keydown-LEFT', movePrev);
-    this.input.keyboard?.on('keydown-RIGHT', moveNext);
-    this.input.keyboard?.on('keydown-UP', movePrev);
-    this.input.keyboard?.on('keydown-DOWN', moveNext);
-    this.input.keyboard?.on('keydown-ENTER', start);
-    this.input.keyboard?.on('keydown-Z', start);
-    this.input.keyboard?.on('keydown-ESC', back);
-    this.input.keyboard?.on('keydown-T', back);
+    this.updateSelectionStyles();
+    this.registerKeyboardInput();
+  }
+
+  update(): void {
+    if (mobileControls.consumePress('up') || mobileControls.consumePress('left')) this.movePrev();
+    if (mobileControls.consumePress('down') || mobileControls.consumePress('right')) this.moveNext();
+    if (mobileControls.consumePress('a') || mobileControls.consumePress('start')) this.startStage();
+    if (mobileControls.consumePress('b')) this.backToTitle();
+    mobileControls.consumePress('select');
+  }
+
+  private registerKeyboardInput(): void {
+    this.input.keyboard?.on('keydown-LEFT', () => this.movePrev());
+    this.input.keyboard?.on('keydown-RIGHT', () => this.moveNext());
+    this.input.keyboard?.on('keydown-UP', () => this.movePrev());
+    this.input.keyboard?.on('keydown-DOWN', () => this.moveNext());
+    this.input.keyboard?.on('keydown-ENTER', () => this.startStage());
+    this.input.keyboard?.on('keydown-Z', () => this.startStage());
+    this.input.keyboard?.on('keydown-ESC', () => this.backToTitle());
+    this.input.keyboard?.on('keydown-T', () => this.backToTitle());
+  }
+
+  private movePrev(): void {
+    this.selectedIndex = Math.max(0, this.selectedIndex - 1);
+    this.updateSelectionStyles();
+  }
+
+  private moveNext(): void {
+    this.selectedIndex = Math.min(STAGES.length - 1, this.selectedIndex + 1);
+    this.updateSelectionStyles();
+  }
+
+  private updateSelectionStyles(): void {
+    this.stageTexts.forEach((text, index) => {
+      text.setBackgroundColor(index === this.selectedIndex ? GB_COLORS.darkest : undefined);
+      text.setColor(index === this.selectedIndex ? GB_COLORS.lightest : GB_COLORS.darkest);
+    });
+  }
+
+  private startStage(): void {
+    this.scene.start(SCENES.game, {
+      stageIndex: this.selectedIndex,
+      totalTrapCost: this.data.totalTrapCost ?? 0,
+      clearedStages: this.data.clearedStages ?? 0,
+      tutorialMode: this.data.tutorialMode ?? false
+    });
+  }
+
+  private backToTitle(): void {
+    this.scene.start(SCENES.title);
   }
 }
