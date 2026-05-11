@@ -1,7 +1,7 @@
-import type { Scene } from 'phaser';
+import * as Phaser from 'phaser';
 import { AudioManager } from './AudioManager';
 
-export const createMuteButton = (scene: Scene, x = 830, y = 8): Phaser.GameObjects.Text => {
+export const createMuteButton = (scene: Phaser.Scene, x = 830, y = 8): Phaser.GameObjects.Text => {
   const getLabel = (): string => (AudioManager.isMuted() ? 'BGM: OFF 🔇' : 'BGM: ON 🔊');
   const button = scene.add.text(x, y, getLabel(), {
     fontSize: '18px',

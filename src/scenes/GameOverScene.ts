@@ -1,11 +1,11 @@
-import { Scene } from 'phaser';
+import * as Phaser from 'phaser';
 import { SCENES } from '../config/gameConfig';
 import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
 import { GB_COLORS, GB_UI } from '../ui/gbTheme';
 import { createTextButton } from '../ui/TextButton';
 
-export class GameOverScene extends Scene {
+export class GameOverScene extends Phaser.Scene {
   constructor() { super(SCENES.gameOver); }
 
   create(data: { win: boolean; text: string }): void {
