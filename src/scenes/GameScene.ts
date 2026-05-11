@@ -1,5 +1,4 @@
 import * as Phaser from 'phaser';
-import { ASSET_KEYS } from '../assets/assetKeys';
 import { GAME_HEIGHT, GAME_WIDTH, SCENES, TRAPS, TURN_INTERVAL_MS } from '../config/gameConfig';
 import { decideHeroAction } from '../core/ai/heroDecisionEngine';
 import { getOpeningDialogue } from '../core/narrative/dialogueSelector';
@@ -19,7 +18,7 @@ import { createMuteButton } from '../systems/AudioUi';
 import { createLog } from '../systems/LogSystem';
 import { GB_COLORS, GB_UI } from '../ui/gbTheme';
 import { renderBoardTiles } from './game/BoardRenderer';
-import { computeBoardLayout, GAME_SCENE_LAYOUT } from './game/GameSceneLayout';
+import { computeBoardLayout } from './game/GameSceneLayout';
 import { formatTrapInfoText } from './game/TrapInfoText';
 import { createInitialSimulationState } from './game/GameSceneStateFactory';
 import { createHeroSprite, updateHeroSpritePosition } from './game/HeroRenderer';
@@ -126,9 +125,9 @@ export class GameScene extends Phaser.Scene {
   private registerInputs(stage: StageDefinition, data: GameSceneData): void {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.handleTrapPlacement(pointer, stage));
     this.input.keyboard?.on('keydown-R', () => this.scene.restart(data));
-    this.input.keyboard?.on('keydown-ENTER', () => this.startRunning());
-    this.input.keyboard?.on('keydown-SPACE', () => this.startRunning());
-    this.input.keyboard?.on('keydown-BACKSPACE', () => this.undoLastPlacement(stage));
+    this.input.keyboard?.on('keydown-ENTER', () => this.handleStartButton(stage));
+    this.input.keyboard?.on('keydown-SPACE', () => this.handleStartButton(stage));
+    this.input.keyboard?.on('keydown-BACKSPACE', () => this.handleBButton(stage));
     this.input.keyboard?.on('keydown-H', () => this.openTutorial());
     this.input.keyboard?.on('keydown-ONE', () => this.selectTrap('spike'));
     this.input.keyboard?.on('keydown-TWO', () => this.selectTrap('slime'));
@@ -306,17 +305,21 @@ export class GameScene extends Phaser.Scene {
   private updateUi(stage: StageDefinition): void {
     const effectiveCostLimit = getEffectiveCostLimit(stage);
     this.hpText.setText(`HP ${this.state.hero.hp}/${this.state.hero.maxHp}  Mana:${this.state.mana}/${this.state.maxMana}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${effectiveCostLimit}`);
-    this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING` : 'PHASE: RUNNING');
+    const phaseText = this.state.phase === 'planning'
+      ? 'PHASE: PLANNING'
+      : this.isPaused ? 'PHASE: RUNNING (PAUSED)' : 'PHASE: RUNNING';
+    this.modeText.setText(phaseText);
     const trapInfo = formatTrapInfoText(this.selectedTrap);
     const selectedCost = TRAPS[this.selectedTrap].cost;
     const manaWarn = this.state.mana < selectedCost ? ` MP不足: COST ${selectedCost} / MP ${this.state.mana}` : '';
     this.trapInfoText.setText(`▶ ${trapInfo}${manaWarn}`);
-    this.logsText.setText(this.state.logs.slice(-2).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
+    const logLimit = this.showDetailedHud ? 2 : 1;
+    this.logsText.setText(this.state.logs.slice(-logLimit).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
   }
 
 
   update(): void {
-    const stage = loadStageByIndex(this.stageIndex);
+    const stage = this.getCurrentStage();
     if (mobileControls.consumePress('up')) this.moveCursor(0, -1, stage);
     if (mobileControls.consumePress('down')) this.moveCursor(0, 1, stage);
     if (mobileControls.consumePress('left')) this.moveCursor(-1, 0, stage);
@@ -339,8 +342,31 @@ export class GameScene extends Phaser.Scene {
 
   private handleAButton(stage: StageDefinition): void { if (this.state.phase === 'planning') this.placeTrapAt(this.cursorPosition, stage); }
   private handleBButton(stage: StageDefinition): void { if (this.state.phase === 'planning') this.undoLastPlacement(stage); }
-  private handleSelectButton(stage: StageDefinition): void { if (this.state.phase === 'planning') { const i = GameScene.TRAP_ORDER.indexOf(this.selectedTrap); this.selectTrap(GameScene.TRAP_ORDER[(i + 1) % GameScene.TRAP_ORDER.length]); return; } this.showDetailedHud = !this.showDetailedHud; this.updateUi(stage); }
-  private handleStartButton(stage: StageDefinition): void { if (this.state.phase === 'planning') { this.startRunning(); return; } this.isPaused = !this.isPaused; this.state = { ...this.state, logs: [...this.state.logs, createLog('phase_changed', this.state.turn, { phase: this.isPaused ? 'PAUSED' : 'RUNNING' })] }; this.updateUi(stage); }
+  private handleSelectButton(stage: StageDefinition): void {
+    if (this.state.phase === 'planning') {
+      const index = GameScene.TRAP_ORDER.indexOf(this.selectedTrap);
+      this.selectTrap(GameScene.TRAP_ORDER[(index + 1) % GameScene.TRAP_ORDER.length]);
+      return;
+    }
+    this.showDetailedHud = !this.showDetailedHud;
+    this.updateUi(stage);
+  }
+  private handleStartButton(stage: StageDefinition): void {
+    if (this.state.phase === 'planning') {
+      this.startRunning();
+      return;
+    }
+    this.isPaused = !this.isPaused;
+    this.state = {
+      ...this.state,
+      logs: [...this.state.logs, createLog('phase_changed', this.state.turn, { phase: this.isPaused ? 'PAUSED' : 'RUNNING' })]
+    };
+    this.updateUi(stage);
+  }
+
+  private getCurrentStage(): StageDefinition {
+    return loadStageByIndex(this.stageIndex);
+  }
 
   private openTutorial(): void {
     if (!this.tutorialMode && this.state.phase !== 'planning') return;
