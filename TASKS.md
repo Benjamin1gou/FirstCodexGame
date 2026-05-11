@@ -138,3 +138,9 @@
 
 - [x] Phaser名前空間のruntime import不足を修正（Title/StageSelect/Game/GameOver/TextButtonほか）
 - [x] PreloadSceneにロード失敗・遷移失敗時の簡易エラー表示を追加
+
+## Phase 22: Mobile Controller UI Refresh
+- [x] タイトル/枠を廃止し、白背景 + 上部最大ゲーム表示 + 下部GB風HTMLボタンへ移行
+- [x] `mobileControls` を追加し、A/B/START/SELECT/D-pad の押下状態を管理
+- [x] GameSceneへ盤面カーソル移動・A配置・B戻す・SELECT切替・START実行/一時停止を追加
+- [x] Phaser内大型ボタンを削減しHUD/ログ最小化（ログ2行）

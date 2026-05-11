@@ -1,5 +1,4 @@
 import * as Phaser from 'phaser';
-import { ASSET_KEYS } from '../assets/assetKeys';
 import { GAME_HEIGHT, GAME_WIDTH, SCENES, TRAPS, TURN_INTERVAL_MS } from '../config/gameConfig';
 import { decideHeroAction } from '../core/ai/heroDecisionEngine';
 import { getOpeningDialogue } from '../core/narrative/dialogueSelector';
@@ -14,36 +13,20 @@ import type { GamePhase, GameSimulationState } from '../core/simulation/simulati
 import { getStageCount, loadStageByIndex } from '../core/stage/stageLoader';
 import type { GridPosition, PlacedTrap, StageDefinition, TrapType } from '../core/stage/stageTypes';
 import { AudioManager } from '../systems/AudioManager';
+import { mobileControls } from '../input/mobileControls';
 import { createMuteButton } from '../systems/AudioUi';
 import { createLog } from '../systems/LogSystem';
-import { createTextButton } from '../ui/TextButton';
 import { GB_COLORS, GB_UI } from '../ui/gbTheme';
 import { renderBoardTiles } from './game/BoardRenderer';
-import { computeBoardLayout, GAME_SCENE_LAYOUT } from './game/GameSceneLayout';
+import { computeBoardLayout } from './game/GameSceneLayout';
 import { formatTrapInfoText } from './game/TrapInfoText';
 import { createInitialSimulationState } from './game/GameSceneStateFactory';
 import { createHeroSprite, updateHeroSpritePosition } from './game/HeroRenderer';
 import { destroyGameObjects, renderPredictionMarkers } from './game/PredictionRenderer';
-import { createTrapToolbar, updateTrapToolbarState } from './game/TrapToolbar';
 import { destroyPlacementOverlay, renderPlacementOverlay } from './game/TrapPlacementOverlayRenderer';
 import { renderTrapSprites } from './game/TrapRenderer';
 
 type GameSceneData = { stageIndex: number; totalTrapCost: number; clearedStages: number; tutorialMode?: boolean };
-
-const UI_POSITIONS = {
-  centerX: GAME_WIDTH / 2,
-  topPanelY: 40,
-  infoPanelY: 390,
-  bottomPanelY: 530,
-  trapGridStartX: 100,
-  trapGridStartY: 486,
-  trapButtonWidth: 120,
-  trapButtonHeight: 36,
-  trapGapX: 20,
-  trapGapY: 10,
-  actionRow1Y: 580,
-  actionRow2Y: 620
-} as const;
 
 export class GameScene extends Phaser.Scene {
   constructor() { super(SCENES.game); }
@@ -59,7 +42,6 @@ export class GameScene extends Phaser.Scene {
   private modeText!: Phaser.GameObjects.Text;
   private predictionText!: Phaser.GameObjects.Text;
   private trapInfoText!: Phaser.GameObjects.Text;
-  private trapButtons = {} as ReturnType<typeof createTrapToolbar>;
   private trapSprites: Phaser.GameObjects.Image[] = [];
   private predictionMarkers: Phaser.GameObjects.GameObject[] = [];
   private placementOverlayObjects: Phaser.GameObjects.GameObject[] = [];
@@ -71,12 +53,17 @@ export class GameScene extends Phaser.Scene {
   private tutorialStepIndex = 0;
   private tutorialOverlay: Phaser.GameObjects.Rectangle | null = null;
   private tutorialText: Phaser.GameObjects.Text | null = null;
+  private cursorPosition: GridPosition = { x: 0, y: 0 };
+  private cursorMarker?: Phaser.GameObjects.Rectangle;
+  private isPaused = false;
+  private showDetailedHud = true;
+  private static readonly TRAP_ORDER: TrapType[] = ['spike', 'slime', 'decoy', 'arrow', 'fear', 'pitfall'];
 
   private static readonly TUTORIAL_STEPS = [
-    'チュートリアル 1/4\n罠カードを選んで、盤面をタップすると罠を配置できます。',
+    'チュートリアル 1/4\n盤面をタップ、または十字キーでカーソルを動かしてAボタンで罠を配置できます。',
     'チュートリアル 2/4\n上部の予測ルート点を見て、勇者の進行先を確認しましょう。',
-    'チュートリアル 3/4\n配置をやり直すときは Backspace または「1手戻し」を使います。',
-    'チュートリアル 4/4\n準備ができたら ENTER または「実行」で進行開始です。'
+    'チュートリアル 3/4\n配置をやり直すときはBボタン、またはBackspaceを使います。',
+    'チュートリアル 4/4\n準備ができたらSTARTボタン、Enter、またはSpaceで進行開始です。'
   ] as const;
 
   create(data: GameSceneData): void {
@@ -118,49 +105,29 @@ export class GameScene extends Phaser.Scene {
     this.boardOffset = layout.boardOffset;
     renderBoardTiles(this, stage, this.boardTileSize, this.boardOffset);
     this.heroSprite = createHeroSprite(this, stage.heroId, stage.startPosition, this.boardTileSize, this.boardOffset);
+    this.cursorPosition = { ...stage.startPosition };
+    this.cursorMarker = this.add.rectangle(0, 0, this.boardTileSize - 2, this.boardTileSize - 2).setStrokeStyle(2, 0xffffff, 0.95).setFillStyle(0xffffff, 0.08).setDepth(1500);
+    this.updateCursorMarker();
   }
 
   private renderUi(stage: StageDefinition): void {
     const opening = getOpeningDialogue(stage.id);
-    const panelColor = Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color;
-    const borderColor = Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color;
-    this.add.rectangle(UI_POSITIONS.centerX, UI_POSITIONS.topPanelY, 340, 68, panelColor).setStrokeStyle(2, borderColor);
-    this.add.rectangle(UI_POSITIONS.centerX, UI_POSITIONS.infoPanelY, 340, 44, panelColor).setStrokeStyle(2, borderColor);
-    this.add.rectangle(UI_POSITIONS.centerX, UI_POSITIONS.bottomPanelY, 340, 214, panelColor).setStrokeStyle(2, borderColor);
+    this.add.rectangle(GAME_WIDTH / 2, 22, GAME_WIDTH - 8, 40, Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color).setStrokeStyle(1, Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color);
 
-    this.add.text(18, 14, `${stage.chapterTitle} ${stage.name}`, { fontSize: '14px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest });
-    this.hpText = this.add.text(18, 34, '', { fontSize: '14px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest });
-    this.modeText = this.add.text(18, 52, '', { fontSize: '13px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark });
-
-    this.trapInfoText = this.add.text(18, 390, '', { fontSize: '14px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: 320 } });
-    this.predictionText = this.add.text(18, 412, '', { fontSize: '12px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark });
-    this.logsText = this.add.text(18, 610, '', { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: 320 } }).setOrigin(0, 1);
-    this.add.text(18, 446, opening.openingNarration, { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark, wordWrap: { width: 320 } });
-
-    this.trapButtons = createTrapToolbar(
-      this,
-      {
-        x: UI_POSITIONS.trapGridStartX,
-        y: UI_POSITIONS.trapGridStartY,
-        buttonWidth: UI_POSITIONS.trapButtonWidth,
-        buttonHeight: UI_POSITIONS.trapButtonHeight,
-        gapX: UI_POSITIONS.trapGapX,
-        gapY: UI_POSITIONS.trapGapY
-      },
-      (trap) => this.selectTrap(trap)
-    );
-    createTextButton(this, { x: 100, y: UI_POSITIONS.actionRow1Y, width: 120, height: 36, label: '1手戻し', onClick: () => this.undoLastPlacement(stage) });
-    createTextButton(this, { x: 260, y: UI_POSITIONS.actionRow1Y, width: 120, height: 36, label: '実行', variant: 'primary', onClick: () => this.startRunning() });
-    createTextButton(this, { x: 100, y: UI_POSITIONS.actionRow2Y, width: 120, height: 36, label: '再挑戦', variant: 'danger', onClick: () => this.scene.restart({ stageIndex: this.stageIndex, totalTrapCost: this.totalTrapCost, clearedStages: this.clearedStages, tutorialMode: this.tutorialMode }) });
-    createTextButton(this, { x: 260, y: UI_POSITIONS.actionRow2Y, width: 120, height: 36, label: 'ヒント', onClick: () => this.openTutorial() });
+    this.hpText = this.add.text(8, 8, '', { fontSize: '12px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest });
+    this.modeText = this.add.text(8, 22, '', { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark });
+    this.trapInfoText = this.add.text(8, GAME_HEIGHT - 30, '', { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: GAME_WIDTH - 16 } });
+    this.predictionText = this.add.text(8, 36, '', { fontSize: '10px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark });
+    this.logsText = this.add.text(8, GAME_HEIGHT - 4, '', { fontSize: '10px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: GAME_WIDTH - 16 } }).setOrigin(0, 1);
+    this.add.text(8, 48, opening.openingNarration, { fontSize: '10px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark, wordWrap: { width: GAME_WIDTH - 16 } });
   }
 
   private registerInputs(stage: StageDefinition, data: GameSceneData): void {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.handleTrapPlacement(pointer, stage));
     this.input.keyboard?.on('keydown-R', () => this.scene.restart(data));
-    this.input.keyboard?.on('keydown-ENTER', () => this.startRunning());
-    this.input.keyboard?.on('keydown-SPACE', () => this.startRunning());
-    this.input.keyboard?.on('keydown-BACKSPACE', () => this.undoLastPlacement(stage));
+    this.input.keyboard?.on('keydown-ENTER', () => this.handleStartButton(stage));
+    this.input.keyboard?.on('keydown-SPACE', () => this.handleStartButton(stage));
+    this.input.keyboard?.on('keydown-BACKSPACE', () => this.handleBButton(stage));
     this.input.keyboard?.on('keydown-H', () => this.openTutorial());
     this.input.keyboard?.on('keydown-ONE', () => this.selectTrap('spike'));
     this.input.keyboard?.on('keydown-TWO', () => this.selectTrap('slime'));
@@ -168,6 +135,18 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-FOUR', () => this.selectTrap('arrow'));
     this.input.keyboard?.on('keydown-FIVE', () => this.selectTrap('fear'));
     this.input.keyboard?.on('keydown-SIX', () => this.selectTrap('pitfall'));
+    this.input.keyboard?.on('keydown-UP', () => this.moveCursor(0, -1, stage));
+    this.input.keyboard?.on('keydown-DOWN', () => this.moveCursor(0, 1, stage));
+    this.input.keyboard?.on('keydown-LEFT', () => this.moveCursor(-1, 0, stage));
+    this.input.keyboard?.on('keydown-RIGHT', () => this.moveCursor(1, 0, stage));
+    this.input.keyboard?.on('keydown-W', () => this.moveCursor(0, -1, stage));
+    this.input.keyboard?.on('keydown-S', () => this.moveCursor(0, 1, stage));
+    this.input.keyboard?.on('keydown-A', () => this.moveCursor(-1, 0, stage));
+    this.input.keyboard?.on('keydown-D', () => this.moveCursor(1, 0, stage));
+    this.input.keyboard?.on('keydown-Z', () => this.handleAButton(stage));
+    this.input.keyboard?.on('keydown-X', () => this.handleBButton(stage));
+    this.input.keyboard?.on('keydown-SHIFT', () => this.handleSelectButton(stage));
+    this.input.keyboard?.on('keydown-ESC', () => this.handleStartButton(stage));
   }
 
   private startRunning(): void {
@@ -191,7 +170,13 @@ export class GameScene extends Phaser.Scene {
     const tileY = Math.floor((pointer.y - this.boardOffset.y) / this.boardTileSize);
     if (tileX < 0 || tileY < 0 || tileX >= stage.width || tileY >= stage.height) return;
 
-    const result = canPlaceTrap(this.state.phase, stage, { x: tileX, y: tileY }, this.state.hero.position, this.state.placedTraps, this.state.placedTraps.length, this.state.usedTrapCost, TRAPS[this.selectedTrap].cost, this.state.mana);
+    this.placeTrapAt({ x: tileX, y: tileY }, stage);
+    this.cursorPosition = { x: tileX, y: tileY };
+    this.updateCursorMarker();
+  }
+
+  private placeTrapAt(position: GridPosition, stage: StageDefinition): void {
+    const result = canPlaceTrap(this.state.phase, stage, position, this.state.hero.position, this.state.placedTraps, this.state.placedTraps.length, this.state.usedTrapCost, TRAPS[this.selectedTrap].cost, this.state.mana);
     if (!result.ok) {
       this.state = { ...this.state, logs: [...this.state.logs, createLog('placement_denied', this.state.turn, { reason: result.reason })] };
       this.updateUi(stage);
@@ -199,7 +184,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const placedTrap: PlacedTrap = createPlacedTrap({ x: tileX, y: tileY }, this.selectedTrap);
+    const placedTrap: PlacedTrap = createPlacedTrap(position, this.selectedTrap);
     this.placementHistory = [...this.placementHistory, placedTrap];
     this.state = {
       ...this.state,
@@ -249,7 +234,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private stepSimulation(stage: StageDefinition): void {
-    if (this.state.status !== 'playing' || this.state.phase !== 'running') return;
+    if (this.state.status !== 'playing' || this.state.phase !== 'running' || this.isPaused) return;
     if (this.state.hero.skipTurns > 0) {
       this.state = { ...this.state, turn: this.state.turn + 1, hero: { ...this.state.hero, skipTurns: this.state.hero.skipTurns - 1 }, logs: [...this.state.logs, createLog('hero_slowed', this.state.turn + 1, { heroName: this.state.hero.name })] };
       this.updateUi(stage);
@@ -320,13 +305,67 @@ export class GameScene extends Phaser.Scene {
   private updateUi(stage: StageDefinition): void {
     const effectiveCostLimit = getEffectiveCostLimit(stage);
     this.hpText.setText(`HP ${this.state.hero.hp}/${this.state.hero.maxHp}  Mana:${this.state.mana}/${this.state.maxMana}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${effectiveCostLimit}`);
-    this.modeText.setText(this.state.phase === 'planning' ? `PHASE: PLANNING` : 'PHASE: RUNNING');
+    const phaseText = this.state.phase === 'planning'
+      ? 'PHASE: PLANNING'
+      : this.isPaused ? 'PHASE: RUNNING (PAUSED)' : 'PHASE: RUNNING';
+    this.modeText.setText(phaseText);
     const trapInfo = formatTrapInfoText(this.selectedTrap);
     const selectedCost = TRAPS[this.selectedTrap].cost;
     const manaWarn = this.state.mana < selectedCost ? ` MP不足: COST ${selectedCost} / MP ${this.state.mana}` : '';
     this.trapInfoText.setText(`▶ ${trapInfo}${manaWarn}`);
-    this.logsText.setText(this.state.logs.slice(-3).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
-    updateTrapToolbarState(this.trapButtons, this.selectedTrap, this.state.phase === 'planning');
+    const logLimit = this.showDetailedHud ? 2 : 1;
+    this.logsText.setText(this.state.logs.slice(-logLimit).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
+  }
+
+
+  update(): void {
+    const stage = this.getCurrentStage();
+    if (mobileControls.consumePress('up')) this.moveCursor(0, -1, stage);
+    if (mobileControls.consumePress('down')) this.moveCursor(0, 1, stage);
+    if (mobileControls.consumePress('left')) this.moveCursor(-1, 0, stage);
+    if (mobileControls.consumePress('right')) this.moveCursor(1, 0, stage);
+    if (mobileControls.consumePress('a')) this.handleAButton(stage);
+    if (mobileControls.consumePress('b')) this.handleBButton(stage);
+    if (mobileControls.consumePress('select')) this.handleSelectButton(stage);
+    if (mobileControls.consumePress('start')) this.handleStartButton(stage);
+  }
+
+  private moveCursor(dx: number, dy: number, stage: StageDefinition): void {
+    this.cursorPosition = { x: Phaser.Math.Clamp(this.cursorPosition.x + dx, 0, stage.width - 1), y: Phaser.Math.Clamp(this.cursorPosition.y + dy, 0, stage.height - 1) };
+    this.updateCursorMarker();
+  }
+
+  private updateCursorMarker(): void {
+    if (!this.cursorMarker) return;
+    this.cursorMarker.setPosition(this.boardOffset.x + this.cursorPosition.x * this.boardTileSize + this.boardTileSize / 2, this.boardOffset.y + this.cursorPosition.y * this.boardTileSize + this.boardTileSize / 2);
+  }
+
+  private handleAButton(stage: StageDefinition): void { if (this.state.phase === 'planning') this.placeTrapAt(this.cursorPosition, stage); }
+  private handleBButton(stage: StageDefinition): void { if (this.state.phase === 'planning') this.undoLastPlacement(stage); }
+  private handleSelectButton(stage: StageDefinition): void {
+    if (this.state.phase === 'planning') {
+      const index = GameScene.TRAP_ORDER.indexOf(this.selectedTrap);
+      this.selectTrap(GameScene.TRAP_ORDER[(index + 1) % GameScene.TRAP_ORDER.length]);
+      return;
+    }
+    this.showDetailedHud = !this.showDetailedHud;
+    this.updateUi(stage);
+  }
+  private handleStartButton(stage: StageDefinition): void {
+    if (this.state.phase === 'planning') {
+      this.startRunning();
+      return;
+    }
+    this.isPaused = !this.isPaused;
+    this.state = {
+      ...this.state,
+      logs: [...this.state.logs, createLog('phase_changed', this.state.turn, { phase: this.isPaused ? 'PAUSED' : 'RUNNING' })]
+    };
+    this.updateUi(stage);
+  }
+
+  private getCurrentStage(): StageDefinition {
+    return loadStageByIndex(this.stageIndex);
   }
 
   private openTutorial(): void {

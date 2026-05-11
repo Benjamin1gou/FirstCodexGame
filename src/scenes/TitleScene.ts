@@ -29,6 +29,10 @@ export class TitleScene extends Phaser.Scene {
     createTextButton(this, { x: 180, y: 414, width: 220, height: 44, label: 'チュートリアル', onClick: () => start(true) });
 
     this.input.keyboard?.on('keydown-H', () => start(true));
+    this.input.keyboard?.on('keydown-ENTER', () => start(false));
+    this.input.keyboard?.on('keydown-Z', () => start(false));
+    this.input.keyboard?.on('keydown-SPACE', () => start(false));
+    this.input.keyboard?.on('keydown-ESC', () => start(false));
     this.input.once('pointerdown', (pointer: Phaser.Input.Pointer) => {
       pointer.event.stopPropagation();
       start(false);

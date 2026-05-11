@@ -4,7 +4,7 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
-  background: #0f380f;
+  background: #ffffff;
   overflow: hidden;
   touch-action: none;
   user-select: none;
@@ -12,23 +12,141 @@ body {
   -webkit-touch-callout: none;
 }
 
-#app,
-#game-container {
+#app {
   width: 100vw;
   height: 100vh;
   height: 100dvh;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+#game-layout {
+  width: min(100vw, 430px);
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) clamp(230px, 31dvh, 300px);
+  background: #ffffff;
+  overflow: hidden;
+}
+
+#game-area {
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background: #ffffff;
+  overflow: hidden;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+#game-container {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #ffffff;
   overflow: hidden;
-  background: #0f380f;
+  border: none;
+  outline: none;
+  box-shadow: none;
 }
 
 canvas {
   display: block;
-  max-width: 100vw;
-  max-height: 100vh;
-  max-height: 100dvh;
+  max-width: 100%;
+  max-height: 100%;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+#gb-controls {
+  position: relative;
+  width: 100%;
+  height: clamp(230px, 31dvh, 300px);
+  background: #ffffff;
+  overflow: hidden;
+}
+
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  font: inherit;
+  user-select: none;
+  touch-action: none;
+}
+
+.dpad {
+  position: absolute;
+  left: clamp(18px, 6vw, 42px);
+  top: 28px;
+  width: 158px;
+  height: 158px;
+}
+
+.dpad-btn,
+.dpad-center {
+  position: absolute;
+  background: #0f380f;
+  color: #ffffff;
+  border: 4px solid #1b1b1b;
+  box-shadow: 0 5px 0 #cfcfcf;
+}
+.dpad-up { left: 52px; top: 0; width: 54px; height: 58px; border-radius: 12px 12px 4px 4px; }
+.dpad-down { left: 52px; bottom: 0; width: 54px; height: 58px; border-radius: 4px 4px 12px 12px; }
+.dpad-left { left: 0; top: 52px; width: 58px; height: 54px; border-radius: 12px 4px 4px 12px; }
+.dpad-right { right: 0; top: 52px; width: 58px; height: 54px; border-radius: 4px 12px 12px 4px; }
+.dpad-center { left: 52px; top: 52px; width: 54px; height: 54px; box-shadow: none; }
+
+.ab-buttons {
+  position: absolute;
+  right: clamp(16px, 5vw, 34px);
+  top: 48px;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+.round-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: #8d1f49;
+  color: #ffffff;
+  font-size: 30px;
+  font-weight: 700;
+  box-shadow: 0 6px 0 #d8d8d8;
+}
+.system-buttons {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 34px;
+}
+.pill-btn {
+  width: 104px;
+  height: 40px;
+  border-radius: 999px;
+  background: #0f380f;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 5px 0 #d8d8d8;
+}
+button:active,
+button.is-pressed {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #d8d8d8;
 }
