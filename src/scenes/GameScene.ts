@@ -1,9 +1,8 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, SCENES, TRAPS, TURN_INTERVAL_MS } from '../config/gameConfig';
 import { decideHeroAction } from '../core/ai/heroDecisionEngine';
-import { getOpeningDialogue } from '../core/narrative/dialogueSelector';
 import { resolveEnding } from '../core/narrative/endingResolver';
-import { canPlaceTrap, getEffectiveCostLimit } from '../core/rules/placementRules';
+import { canPlaceTrap } from '../core/rules/placementRules';
 import { evaluateStageRank, type StageRank } from '../core/rules/rankEvaluator';
 import { judgeStageStatus } from '../core/rules/victoryJudge';
 import { predictRoute } from '../core/simulation/predictRoute';
@@ -19,7 +18,6 @@ import { createLog } from '../systems/LogSystem';
 import { GB_COLORS, GB_UI } from '../ui/gbTheme';
 import { renderBoardTiles } from './game/BoardRenderer';
 import { computeBoardLayout } from './game/GameSceneLayout';
-import { formatTrapInfoText } from './game/TrapInfoText';
 import { createInitialSimulationState } from './game/GameSceneStateFactory';
 import { createHeroSprite, updateHeroSpritePosition } from './game/HeroRenderer';
 import { destroyGameObjects, renderPredictionMarkers } from './game/PredictionRenderer';
@@ -39,9 +37,8 @@ export class GameScene extends Phaser.Scene {
   private heroSprite!: Phaser.GameObjects.Image;
   private logsText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
-  private modeText!: Phaser.GameObjects.Text;
-  private predictionText!: Phaser.GameObjects.Text;
-  private trapInfoText!: Phaser.GameObjects.Text;
+  private turnText!: Phaser.GameObjects.Text;
+  private costText!: Phaser.GameObjects.Text;
   private trapSprites: Phaser.GameObjects.Image[] = [];
   private predictionMarkers: Phaser.GameObjects.GameObject[] = [];
   private placementOverlayObjects: Phaser.GameObjects.GameObject[] = [];
@@ -56,7 +53,6 @@ export class GameScene extends Phaser.Scene {
   private cursorPosition: GridPosition = { x: 0, y: 0 };
   private cursorMarker?: Phaser.GameObjects.Rectangle;
   private isPaused = false;
-  private showDetailedHud = true;
   private static readonly TRAP_ORDER: TrapType[] = ['spike', 'slime', 'decoy', 'arrow', 'fear', 'pitfall'];
 
   private static readonly TUTORIAL_STEPS = [
@@ -111,15 +107,34 @@ export class GameScene extends Phaser.Scene {
   }
 
   private renderUi(stage: StageDefinition): void {
-    const opening = getOpeningDialogue(stage.id);
-    this.add.rectangle(GAME_WIDTH / 2, 22, GAME_WIDTH - 8, 40, Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color).setStrokeStyle(1, Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color);
+    const hudHeight = 64;
+    const panelColor = Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color;
+    this.add.rectangle(GAME_WIDTH / 2, hudHeight / 2, GAME_WIDTH, hudHeight, panelColor).setOrigin(0.5);
 
-    this.hpText = this.add.text(8, 8, '', { fontSize: '12px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest });
-    this.modeText = this.add.text(8, 22, '', { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark });
-    this.trapInfoText = this.add.text(8, GAME_HEIGHT - 30, '', { fontSize: '11px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: GAME_WIDTH - 16 } });
-    this.predictionText = this.add.text(8, 36, '', { fontSize: '10px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark });
-    this.logsText = this.add.text(8, GAME_HEIGHT - 4, '', { fontSize: '10px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest, wordWrap: { width: GAME_WIDTH - 16 } }).setOrigin(0, 1);
-    this.add.text(8, 48, opening.openingNarration, { fontSize: '10px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark, wordWrap: { width: GAME_WIDTH - 16 } });
+    this.turnText = this.add.text(14, 18, '', {
+      fontSize: '22px',
+      fontFamily: GB_UI.fontFamily,
+      color: GB_COLORS.darkest,
+      fontStyle: 'bold'
+    });
+    this.hpText = this.add.text(GAME_WIDTH / 2, 18, '', {
+      fontSize: '22px',
+      fontFamily: GB_UI.fontFamily,
+      color: GB_COLORS.darkest,
+      fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+    this.costText = this.add.text(GAME_WIDTH - 14, 18, '', {
+      fontSize: '22px',
+      fontFamily: GB_UI.fontFamily,
+      color: GB_COLORS.darkest,
+      fontStyle: 'bold'
+    }).setOrigin(1, 0);
+    this.logsText = this.add.text(8, GAME_HEIGHT - 8, '', {
+      fontSize: '9px',
+      fontFamily: GB_UI.fontFamily,
+      color: GB_COLORS.darkest,
+      wordWrap: { width: GAME_WIDTH - 16 }
+    }).setOrigin(0, 1);
   }
 
   private registerInputs(stage: StageDefinition, data: GameSceneData): void {
@@ -229,7 +244,6 @@ export class GameScene extends Phaser.Scene {
     const predicted = predictRoute(this.state.hero, stage, this.state.placedTraps, 20);
     destroyGameObjects(this.predictionMarkers);
     this.predictionMarkers = renderPredictionMarkers(this, predicted.positions, this.boardTileSize, this.boardOffset);
-    this.predictionText.setText(predicted.summary);
     this.state = { ...this.state, logs: [...this.state.logs, createLog('prediction_updated', this.state.turn)] };
   }
 
@@ -303,37 +317,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateUi(stage: StageDefinition): void {
-    const effectiveCostLimit = getEffectiveCostLimit(stage);
-    this.hpText.setText(`HP ${this.state.hero.hp}/${this.state.hero.maxHp}  Mana:${this.state.mana}/${this.state.maxMana}  罠:${this.state.placedTraps.length}/${stage.trapLimit}  Cost:${this.state.usedTrapCost}/${effectiveCostLimit}`);
-    const phaseText = this.state.phase === 'planning'
-      ? 'PHASE: PLANNING'
-      : this.isPaused ? 'PHASE: RUNNING (PAUSED)' : 'PHASE: RUNNING';
-    this.modeText.setText(phaseText);
-    const trapInfo = formatTrapInfoText(this.selectedTrap);
-    const selectedCost = TRAPS[this.selectedTrap].cost;
-    const manaWarn = this.state.mana < selectedCost ? ` MP不足: COST ${selectedCost} / MP ${this.state.mana}` : '';
-    this.trapInfoText.setText(`▶ ${trapInfo}${manaWarn}`);
-    const logLimit = this.showDetailedHud ? 2 : 1;
-    this.logsText.setText(this.state.logs.slice(-logLimit).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
+    this.turnText.setText(`TURN ${this.state.turn}`);
+    this.hpText.setText(`HP ${Math.max(0, this.state.hero.hp)}`);
+    this.costText.setText(`COST ${this.state.usedTrapCost}`);
+    this.logsText.setText(this.state.logs.slice(-1).map((log) => `[${log.turn}] ${log.text}`).join('\n'));
   }
 
-
-  update(): void {
-    const stage = this.getCurrentStage();
-    if (mobileControls.consumePress('up')) this.moveCursor(0, -1, stage);
-    if (mobileControls.consumePress('down')) this.moveCursor(0, 1, stage);
-    if (mobileControls.consumePress('left')) this.moveCursor(-1, 0, stage);
-    if (mobileControls.consumePress('right')) this.moveCursor(1, 0, stage);
-    if (mobileControls.consumePress('a')) this.handleAButton(stage);
-    if (mobileControls.consumePress('b')) this.handleBButton(stage);
-    if (mobileControls.consumePress('select')) this.handleSelectButton(stage);
-    if (mobileControls.consumePress('start')) this.handleStartButton(stage);
-  }
-
-  private moveCursor(dx: number, dy: number, stage: StageDefinition): void {
-    this.cursorPosition = { x: Phaser.Math.Clamp(this.cursorPosition.x + dx, 0, stage.width - 1), y: Phaser.Math.Clamp(this.cursorPosition.y + dy, 0, stage.height - 1) };
-    this.updateCursorMarker();
-  }
 
   private updateCursorMarker(): void {
     if (!this.cursorMarker) return;
@@ -348,7 +337,10 @@ export class GameScene extends Phaser.Scene {
       this.selectTrap(GameScene.TRAP_ORDER[(index + 1) % GameScene.TRAP_ORDER.length]);
       return;
     }
-    this.showDetailedHud = !this.showDetailedHud;
+    this.state = {
+      ...this.state,
+      logs: [...this.state.logs, createLog('phase_changed', this.state.turn, { phase: 'HUD:TOGGLE' })]
+    };
     this.updateUi(stage);
   }
   private handleStartButton(stage: StageDefinition): void {

@@ -148,3 +148,10 @@
 ## Phase 23: GB UI Layout Fix
 - [x] style.css を `src/main.ts` から import する構成へ変更し、Pages配信時の反映漏れを防止
 - [x] StageSelectScene の Phaser内ボタン/外枠を削除し、HTMLコントローラー操作へ統一
+
+
+## Phase 24: Screenshot-faithful Mobile UI Tuning
+- [x] index.html を2段構成 + ラベル分離済みコントローラーDOMへ再構成
+- [x] style.css をグリッドレイアウト化し、上部64%/下部36%目安に調整
+- [x] GameScene HUDを TURN/HP/COST 主体へ簡素化し常時大見出し化
+- [x] GameSceneLayout をHUD直下開始へ調整し盤面の上寄せ表示を強化
