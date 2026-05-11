@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import type { TrapType } from '../../core/stage/stageTypes';
 import { createTextButton, type TextButtonInstance } from '../../ui/TextButton';
 

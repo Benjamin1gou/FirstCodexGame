@@ -135,3 +135,6 @@
 
 ## Phase 21: Preload Base URL Hardening
 - [x] BASE_URL 未定義時に `/` へフォールバックし、初期ロード停止を防止
+
+- [x] Phaser名前空間のruntime import不足を修正（Title/StageSelect/Game/GameOver/TextButtonほか）
+- [x] PreloadSceneにロード失敗・遷移失敗時の簡易エラー表示を追加

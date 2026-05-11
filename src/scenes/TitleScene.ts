@@ -1,11 +1,11 @@
-import { Scene } from 'phaser';
+import * as Phaser from 'phaser';
 import { SCENES } from '../config/gameConfig';
 import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
 import { GB_COLORS, GB_UI } from '../ui/gbTheme';
 import { createTextButton } from '../ui/TextButton';
 
-export class TitleScene extends Scene {
+export class TitleScene extends Phaser.Scene {
   constructor() { super(SCENES.title); }
 
   create(): void {

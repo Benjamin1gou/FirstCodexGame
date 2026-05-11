@@ -1,4 +1,4 @@
-import type { Scene } from 'phaser';
+import * as Phaser from 'phaser';
 import { GB_COLORS, GB_UI } from './gbTheme';
 
 export type TextButtonOptions = {
@@ -26,7 +26,7 @@ const getPalette = (variant: NonNullable<TextButtonOptions['variant']>) => {
   return { bg: GB_COLORS.lightest, fg: GB_COLORS.darkest };
 };
 
-export const createTextButton = (scene: Scene, options: TextButtonOptions): TextButtonInstance => {
+export const createTextButton = (scene: Phaser.Scene, options: TextButtonOptions): TextButtonInstance => {
   const variant = options.variant ?? 'normal';
   const basePadding = options.padding ?? { x: GB_UI.buttonPaddingX, y: GB_UI.buttonPaddingY };
   const label = scene.add.text(0, 0, options.label, {

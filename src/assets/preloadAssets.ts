@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { ASSET_MANIFEST } from './assetManifest';
 
 const DEFAULT_BASE_URL = '/';

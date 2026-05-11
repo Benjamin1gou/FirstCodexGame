@@ -1,4 +1,4 @@
-import { Scene } from 'phaser';
+import * as Phaser from 'phaser';
 import { SCENES } from '../config/gameConfig';
 import { STAGES } from '../core/stage/stageRepository';
 import { AudioManager } from '../systems/AudioManager';
@@ -8,7 +8,7 @@ import { createTextButton } from '../ui/TextButton';
 
 type StageSelectData = { index?: number; totalTrapCost?: number; clearedStages?: number; tutorialMode?: boolean };
 
-export class StageSelectScene extends Scene {
+export class StageSelectScene extends Phaser.Scene {
   constructor() { super(SCENES.stageSelect); }
 
   create(data: StageSelectData = {}): void {

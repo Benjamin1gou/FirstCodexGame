@@ -1,4 +1,4 @@
-import { Scene } from 'phaser';
+import * as Phaser from 'phaser';
 import { ASSET_KEYS } from '../assets/assetKeys';
 import { GAME_HEIGHT, GAME_WIDTH, SCENES, TRAPS, TURN_INTERVAL_MS } from '../config/gameConfig';
 import { decideHeroAction } from '../core/ai/heroDecisionEngine';
@@ -45,7 +45,7 @@ const UI_POSITIONS = {
   actionRow2Y: 620
 } as const;
 
-export class GameScene extends Scene {
+export class GameScene extends Phaser.Scene {
   constructor() { super(SCENES.game); }
 
   private state!: GameSimulationState;
