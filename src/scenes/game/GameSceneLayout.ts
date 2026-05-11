@@ -3,11 +3,11 @@ import type { StageDefinition } from '../../core/stage/stageTypes';
 
 export const GAME_SCENE_LAYOUT = {
   screenPadding: 4,
-  topPanelHeight: 44,
-  boardTopPadding: 4,
+  topPanelHeight: 64,
+  boardTopPadding: 0,
   boardBottomPadding: 4,
-  trapInfoHeight: 28,
-  bottomPanelHeight: 36,
+  trapInfoHeight: 0,
+  bottomPanelHeight: 0,
   trapToolbarTop: 0,
   actionButtonTop: 0
 } as const;
@@ -30,13 +30,12 @@ export const computeBoardLayout = (stage: StageDefinition): BoardLayout => {
   const maxTileByHeight = Math.floor(availableHeight / stage.height);
   const tileSize = Math.max(24, Math.min(TILE_SIZE, maxTileByWidth, maxTileByHeight));
   const boardPixelWidth = tileSize * stage.width;
-  const boardPixelHeight = tileSize * stage.height;
 
   return {
     tileSize,
     boardOffset: {
       x: Math.floor((GAME_WIDTH - boardPixelWidth) / 2),
-      y: GAME_SCENE_LAYOUT.topPanelHeight + GAME_SCENE_LAYOUT.boardTopPadding + Math.floor((availableHeight - boardPixelHeight) / 2)
+      y: GAME_SCENE_LAYOUT.topPanelHeight + GAME_SCENE_LAYOUT.boardTopPadding
     }
   };
 };

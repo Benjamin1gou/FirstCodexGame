@@ -15,20 +15,37 @@
         <div id="game-container"></div>
       </section>
       <section id="gb-controls" aria-label="game controls">
-        <div class="dpad" aria-label="direction buttons">
-          <button class="dpad-btn dpad-up" data-action="up" aria-label="up">▲</button>
-          <button class="dpad-btn dpad-left" data-action="left" aria-label="left">◀</button>
-          <div class="dpad-center" aria-hidden="true"></div>
-          <button class="dpad-btn dpad-right" data-action="right" aria-label="right">▶</button>
-          <button class="dpad-btn dpad-down" data-action="down" aria-label="down">▼</button>
+        <div class="control-block dpad-block">
+          <div class="dpad" aria-label="direction buttons">
+            <button class="dpad-btn dpad-up" data-action="up" aria-label="up">▲</button>
+            <button class="dpad-btn dpad-left" data-action="left" aria-label="left">◀</button>
+            <div class="dpad-center" aria-hidden="true"></div>
+            <button class="dpad-btn dpad-right" data-action="right" aria-label="right">▶</button>
+            <button class="dpad-btn dpad-down" data-action="down" aria-label="down">▼</button>
+          </div>
+          <div class="control-caption">MOVE / SELECT</div>
         </div>
-        <div class="ab-buttons" aria-label="action buttons">
-          <button class="round-btn b-btn" data-action="b" aria-label="B button">B</button>
-          <button class="round-btn a-btn" data-action="a" aria-label="A button">A</button>
+        <div class="control-block ab-block">
+          <div class="ab-buttons" aria-label="action buttons">
+            <div class="action-button-group">
+              <button class="round-btn b-btn" data-action="b" aria-label="B button">B</button>
+              <div class="control-caption">CANCEL / BACK</div>
+            </div>
+            <div class="action-button-group">
+              <button class="round-btn a-btn" data-action="a" aria-label="A button">A</button>
+              <div class="control-caption">OK / PLACE</div>
+            </div>
+          </div>
         </div>
         <div class="system-buttons" aria-label="system buttons">
-          <button class="pill-btn select-btn" data-action="select" aria-label="select">SELECT</button>
-          <button class="pill-btn start-btn" data-action="start" aria-label="start">START</button>
+          <div class="system-button-group">
+            <button class="pill-btn select-btn" data-action="select" aria-label="select"></button>
+            <div class="control-caption">SELECT</div>
+          </div>
+          <div class="system-button-group">
+            <button class="pill-btn start-btn" data-action="start" aria-label="start"></button>
+            <div class="control-caption">START</div>
+          </div>
         </div>
       </section>
     </main>
