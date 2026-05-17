@@ -21,12 +21,12 @@ body {
 }
 
 #game-layout {
-  width: min(100vw, 430px);
+  width: 100vw;
   height: 100vh;
   height: 100dvh;
-  margin: 0 auto;
+  margin: 0;
   display: grid;
-  grid-template-rows: minmax(0, 64fr) minmax(250px, 36fr);
+  grid-template-rows: minmax(0, 62fr) minmax(250px, 38fr);
   background: #ffffff;
   overflow: hidden;
 }
@@ -34,7 +34,7 @@ body {
 #game-area {
   width: 100%;
   min-height: 0;
-  padding: 10px 10px 0;
+  padding: 0;
   box-sizing: border-box;
   display: flex;
   align-items: flex-start;

@@ -56,10 +56,10 @@ export class GameScene extends Phaser.Scene {
   private static readonly TRAP_ORDER: TrapType[] = ['spike', 'slime', 'decoy', 'arrow', 'fear', 'pitfall'];
 
   private static readonly TUTORIAL_STEPS = [
-    'チュートリアル 1/4\n盤面をタップ、または十字キーでカーソルを動かしてAボタンで罠を配置できます。',
+    'チュートリアル 1/4\n十字キーでカーソルを動かしてAボタンで罠を配置できます。',
     'チュートリアル 2/4\n上部の予測ルート点を見て、勇者の進行先を確認しましょう。',
-    'チュートリアル 3/4\n配置をやり直すときはBボタン、またはBackspaceを使います。',
-    'チュートリアル 4/4\n準備ができたらSTARTボタン、Enter、またはSpaceで進行開始です。'
+    'チュートリアル 3/4\n配置をやり直すときはBボタンを使います。',
+    'チュートリアル 4/4\n準備ができたらSTARTボタンで進行開始です。'
   ] as const;
 
   create(data: GameSceneData): void {
@@ -70,12 +70,36 @@ export class GameScene extends Phaser.Scene {
     this.trapSprites = renderTrapSprites(this, this.state.placedTraps, this.boardTileSize, this.boardOffset);
     this.renderUi(stage);
     this.refreshPredictions(stage);
-    this.registerInputs(stage, data);
+    this.registerInputs();
 
     this.time.addEvent({ delay: TURN_INTERVAL_MS, loop: true, callback: () => this.stepSimulation(stage) });
     this.updateUi(stage);
     this.refreshPlacementOverlay(stage);
     if (this.tutorialMode) this.openTutorial();
+  }
+
+
+  update(): void {
+    const stage = this.getCurrentStage();
+    if (this.tutorialOverlay) {
+      if (mobileControls.consumePress('a') || mobileControls.consumePress('start')) this.advanceTutorial();
+      mobileControls.consumePress('b');
+      mobileControls.consumePress('select');
+      mobileControls.consumePress('up');
+      mobileControls.consumePress('down');
+      mobileControls.consumePress('left');
+      mobileControls.consumePress('right');
+      return;
+    }
+
+    if (mobileControls.consumePress('up')) this.moveCursor(0, -1, stage);
+    if (mobileControls.consumePress('down')) this.moveCursor(0, 1, stage);
+    if (mobileControls.consumePress('left')) this.moveCursor(-1, 0, stage);
+    if (mobileControls.consumePress('right')) this.moveCursor(1, 0, stage);
+    if (mobileControls.consumePress('a')) this.handleAButton(stage);
+    if (mobileControls.consumePress('b')) this.handleBButton(stage);
+    if (mobileControls.consumePress('select')) this.handleSelectButton(stage);
+    if (mobileControls.consumePress('start')) this.handleStartButton(stage);
   }
 
   private setupSceneEnvironment(): void {
@@ -137,32 +161,7 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0, 1);
   }
 
-  private registerInputs(stage: StageDefinition, data: GameSceneData): void {
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.handleTrapPlacement(pointer, stage));
-    this.input.keyboard?.on('keydown-R', () => this.scene.restart(data));
-    this.input.keyboard?.on('keydown-ENTER', () => this.handleStartButton(stage));
-    this.input.keyboard?.on('keydown-SPACE', () => this.handleStartButton(stage));
-    this.input.keyboard?.on('keydown-BACKSPACE', () => this.handleBButton(stage));
-    this.input.keyboard?.on('keydown-H', () => this.openTutorial());
-    this.input.keyboard?.on('keydown-ONE', () => this.selectTrap('spike'));
-    this.input.keyboard?.on('keydown-TWO', () => this.selectTrap('slime'));
-    this.input.keyboard?.on('keydown-THREE', () => this.selectTrap('decoy'));
-    this.input.keyboard?.on('keydown-FOUR', () => this.selectTrap('arrow'));
-    this.input.keyboard?.on('keydown-FIVE', () => this.selectTrap('fear'));
-    this.input.keyboard?.on('keydown-SIX', () => this.selectTrap('pitfall'));
-    this.input.keyboard?.on('keydown-UP', () => this.moveCursor(0, -1, stage));
-    this.input.keyboard?.on('keydown-DOWN', () => this.moveCursor(0, 1, stage));
-    this.input.keyboard?.on('keydown-LEFT', () => this.moveCursor(-1, 0, stage));
-    this.input.keyboard?.on('keydown-RIGHT', () => this.moveCursor(1, 0, stage));
-    this.input.keyboard?.on('keydown-W', () => this.moveCursor(0, -1, stage));
-    this.input.keyboard?.on('keydown-S', () => this.moveCursor(0, 1, stage));
-    this.input.keyboard?.on('keydown-A', () => this.moveCursor(-1, 0, stage));
-    this.input.keyboard?.on('keydown-D', () => this.moveCursor(1, 0, stage));
-    this.input.keyboard?.on('keydown-Z', () => this.handleAButton(stage));
-    this.input.keyboard?.on('keydown-X', () => this.handleBButton(stage));
-    this.input.keyboard?.on('keydown-SHIFT', () => this.handleSelectButton(stage));
-    this.input.keyboard?.on('keydown-ESC', () => this.handleStartButton(stage));
-  }
+  private registerInputs(): void {}
 
   private startRunning(): void {
     void AudioManager.unlock().catch(() => undefined);
@@ -178,16 +177,6 @@ export class GameScene extends Phaser.Scene {
     const stage = loadStageByIndex(this.stageIndex);
     this.updateUi(stage);
     this.refreshPlacementOverlay(stage);
-  }
-
-  private handleTrapPlacement(pointer: Phaser.Input.Pointer, stage: StageDefinition): void {
-    const tileX = Math.floor((pointer.x - this.boardOffset.x) / this.boardTileSize);
-    const tileY = Math.floor((pointer.y - this.boardOffset.y) / this.boardTileSize);
-    if (tileX < 0 || tileY < 0 || tileX >= stage.width || tileY >= stage.height) return;
-
-    this.placeTrapAt({ x: tileX, y: tileY }, stage);
-    this.cursorPosition = { x: tileX, y: tileY };
-    this.updateCursorMarker();
   }
 
   private placeTrapAt(position: GridPosition, stage: StageDefinition): void {
@@ -370,16 +359,16 @@ export class GameScene extends Phaser.Scene {
     this.destroyTutorialOverlay();
     this.tutorialOverlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color, 0.85).setOrigin(0).setDepth(2000);
     const body = GameScene.TUTORIAL_STEPS[this.tutorialStepIndex] ?? 'チュートリアルは完了しました。';
-    this.tutorialText = this.add.text(24, 160, `${body}\n\nタップで次へ`, { fontSize: '19px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.white, wordWrap: { width: GAME_WIDTH - 48 } }).setDepth(2001);
-    this.tutorialOverlay.setInteractive({ useHandCursor: true });
-    this.tutorialOverlay.on('pointerdown', () => {
-      this.tutorialStepIndex += 1;
-      if (this.tutorialStepIndex >= GameScene.TUTORIAL_STEPS.length) {
-        this.destroyTutorialOverlay();
-        return;
-      }
-      this.showTutorialStep();
-    });
+    this.tutorialText = this.add.text(24, 160, `${body}\n\nA/STARTで次へ`, { fontSize: '19px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.white, wordWrap: { width: GAME_WIDTH - 48 } }).setDepth(2001);
+  }
+
+  private advanceTutorial(): void {
+    this.tutorialStepIndex += 1;
+    if (this.tutorialStepIndex >= GameScene.TUTORIAL_STEPS.length) {
+      this.destroyTutorialOverlay();
+      return;
+    }
+    this.showTutorialStep();
   }
 
   private destroyTutorialOverlay(): void {
