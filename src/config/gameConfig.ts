@@ -1,7 +1,7 @@
 import type { TrapDefinition, TrapType } from '../core/stage/stageTypes';
 
 export const GAME_WIDTH = 360;
-export const GAME_HEIGHT = 640;
+export const GAME_HEIGHT = 500;
 export const TILE_SIZE = 32;
 
 export const SCENES = { preload: 'PreloadScene', title: 'TitleScene', stageSelect: 'StageSelectScene', game: 'GameScene', gameOver: 'GameOverScene' } as const;

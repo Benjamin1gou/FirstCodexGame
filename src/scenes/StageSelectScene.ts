@@ -35,7 +35,6 @@ export class StageSelectScene extends Phaser.Scene {
     }));
 
     this.updateSelectionStyles();
-    this.registerKeyboardInput();
   }
 
   update(): void {
@@ -44,17 +43,6 @@ export class StageSelectScene extends Phaser.Scene {
     if (mobileControls.consumePress('a') || mobileControls.consumePress('start')) this.startStage();
     if (mobileControls.consumePress('b')) this.backToTitle();
     mobileControls.consumePress('select');
-  }
-
-  private registerKeyboardInput(): void {
-    this.input.keyboard?.on('keydown-LEFT', () => this.movePrev());
-    this.input.keyboard?.on('keydown-RIGHT', () => this.moveNext());
-    this.input.keyboard?.on('keydown-UP', () => this.movePrev());
-    this.input.keyboard?.on('keydown-DOWN', () => this.moveNext());
-    this.input.keyboard?.on('keydown-ENTER', () => this.startStage());
-    this.input.keyboard?.on('keydown-Z', () => this.startStage());
-    this.input.keyboard?.on('keydown-ESC', () => this.backToTitle());
-    this.input.keyboard?.on('keydown-T', () => this.backToTitle());
   }
 
   private movePrev(): void {

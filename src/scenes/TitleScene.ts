@@ -1,41 +1,51 @@
 import * as Phaser from 'phaser';
 import { SCENES } from '../config/gameConfig';
+import { mobileControls } from '../input/mobileControls';
 import { AudioManager } from '../systems/AudioManager';
 import { createMuteButton } from '../systems/AudioUi';
 import { GB_COLORS, GB_UI } from '../ui/gbTheme';
-import { createTextButton } from '../ui/TextButton';
 
 export class TitleScene extends Phaser.Scene {
   constructor() { super(SCENES.title); }
+  private tutorialMode = false;
+  private started = false;
+  private modeText?: Phaser.GameObjects.Text;
 
   create(): void {
     AudioManager.bindGlobalUnlock(this);
     createMuteButton(this);
     void AudioManager.playTitleBgm().catch(() => undefined);
 
-    this.add.rectangle(180, 320, 340, 600, Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color).setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color);
-    this.add.text(180, 150, '勇者誘導\nDUNGEON\nGB STYLE', { fontSize: '34px', align: 'center', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest }).setOrigin(0.5);
-    this.add.text(180, 280, 'TAP START', { fontSize: '24px', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark }).setOrigin(0.5);
+    this.add.rectangle(180, 250, 340, 460, Phaser.Display.Color.HexStringToColor(GB_COLORS.lightest).color).setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(GB_COLORS.darkest).color);
+    this.add.text(180, 120, '勇者誘導\nDUNGEON\nGB STYLE', { fontSize: '34px', align: 'center', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest }).setOrigin(0.5);
+    this.add.text(180, 250, 'A / START : START\nSELECT : MODE TOGGLE', { fontSize: '19px', align: 'center', fontFamily: GB_UI.fontFamily, color: GB_COLORS.dark }).setOrigin(0.5);
+    this.modeText = this.add.text(180, 332, '', { fontSize: '20px', align: 'center', fontFamily: GB_UI.fontFamily, color: GB_COLORS.darkest }).setOrigin(0.5);
+    this.renderModeText();
+  }
 
-    let started = false;
-    const start = (tutorialMode: boolean) => {
-      if (started) return;
-      started = true;
-      void AudioManager.unlock().catch(() => undefined);
-      this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode });
-    };
+  update(): void {
+    if (mobileControls.consumePress('select')) {
+      this.tutorialMode = !this.tutorialMode;
+      this.renderModeText();
+    }
+    if (mobileControls.consumePress('a') || mobileControls.consumePress('start')) {
+      this.startGame();
+    }
+    mobileControls.consumePress('b');
+    mobileControls.consumePress('up');
+    mobileControls.consumePress('down');
+    mobileControls.consumePress('left');
+    mobileControls.consumePress('right');
+  }
 
-    createTextButton(this, { x: 180, y: 360, width: 220, height: 44, label: '通常プレイ', onClick: () => start(false) });
-    createTextButton(this, { x: 180, y: 414, width: 220, height: 44, label: 'チュートリアル', onClick: () => start(true) });
+  private renderModeText(): void {
+    this.modeText?.setText(this.tutorialMode ? 'MODE: チュートリアル' : 'MODE: 通常プレイ');
+  }
 
-    this.input.keyboard?.on('keydown-H', () => start(true));
-    this.input.keyboard?.on('keydown-ENTER', () => start(false));
-    this.input.keyboard?.on('keydown-Z', () => start(false));
-    this.input.keyboard?.on('keydown-SPACE', () => start(false));
-    this.input.keyboard?.on('keydown-ESC', () => start(false));
-    this.input.once('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      pointer.event.stopPropagation();
-      start(false);
-    });
+  private startGame(): void {
+    if (this.started) return;
+    this.started = true;
+    void AudioManager.unlock().catch(() => undefined);
+    this.scene.start(SCENES.stageSelect, { totalTrapCost: 0, clearedStages: 0, tutorialMode: this.tutorialMode });
   }
 }
