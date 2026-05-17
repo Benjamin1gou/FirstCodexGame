@@ -155,3 +155,9 @@
 - [x] style.css をグリッドレイアウト化し、上部64%/下部36%目安に調整
 - [x] GameScene HUDを TURN/HP/COST 主体へ簡素化し常時大見出し化
 - [x] GameSceneLayout をHUD直下開始へ調整し盤面の上寄せ表示を強化
+
+
+## Phase 25: GB Screen Re-layout Refinement
+- [x] タイルサイズ上限を撤廃し、盤面を画面内で最大化
+- [x] 盤面開始YをHUD直下へ調整し、下部空白を圧縮
+- [x] 盤面描画をGB風フラットグリッドへ再調整
